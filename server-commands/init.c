@@ -4,7 +4,7 @@ void init_server(int* sSocketTCP, int* sSocketUDP, struct sockaddr_in* serverTCP
 {
   serverTCP->sin_port = htons(TCP_PORT);
   serverTCP->sin_family = AF_INET;
-  serverTCP->sin_addr.s_addr = INADDR_ANY;
+  serverTCP->sin_addr.s_addr = htonl(INADDR_ANY);
 
   *sSocketTCP = xsocket(AF_INET, SOCK_STREAM, 0);
   xbind(*sSocketTCP, (const struct sockaddr *)serverTCP, sizeof(*serverTCP));
@@ -20,7 +20,7 @@ void init_server(int* sSocketTCP, int* sSocketUDP, struct sockaddr_in* serverTCP
 
   serverUDP->sin_port = htons(UDP_PORT);
   serverUDP->sin_family = AF_INET;
-  serverUDP->sin_addr.s_addr = INADDR_BROADCAST;
+  serverUDP->sin_addr.s_addr = htonl(INADDR_BROADCAST);
 }
 
 void init_client(int* cSocket, int* sSocketTCP, struct sockaddr_in* client)
