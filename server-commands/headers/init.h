@@ -3,7 +3,7 @@
 
 #include "shared_defines.h"
 
-void initServer(int*, int*, struct sockaddr_in*, struct sockaddr_in*);
-void initClient(int*, int*, struct sockaddr_in*);
+void init_server(int*, int*, struct sockaddr_in*, struct sockaddr_in*);
+void init_client(int*, int*, struct sockaddr_in*);
 
 #endif /* !__INIT_H__ */

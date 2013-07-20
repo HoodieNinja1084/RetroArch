@@ -1,6 +1,6 @@
 #include "init.h"
 
-void initServer(int* sSocketTCP, int* sSocketUDP, struct sockaddr_in* serverTCP, struct sockaddr_in* serverUDP)
+void init_server(int* sSocketTCP, int* sSocketUDP, struct sockaddr_in* serverTCP, struct sockaddr_in* serverUDP)
 {
   serverTCP->sin_port = htons(TCP_PORT);
   serverTCP->sin_family = AF_INET;
@@ -23,7 +23,7 @@ void initServer(int* sSocketTCP, int* sSocketUDP, struct sockaddr_in* serverTCP,
   serverUDP->sin_addr.s_addr = INADDR_BROADCAST;
 }
 
-void initClient(int* cSocket, int* sSocketTCP, struct sockaddr_in* client)
+void init_client(int* cSocket, int* sSocketTCP, struct sockaddr_in* client)
 {
   socklen_t structLen;
 

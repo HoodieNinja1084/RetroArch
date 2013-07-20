@@ -14,25 +14,33 @@ int pack(char* buffer, int opcode, ...)
       switch (*format)
 	{
 	case 'c':
-	  char value = (char)va_arg(ap, int);
-	  *buffer++ = value;
-	  printf(">> %c\n", value);
-	  break;
+	  {
+	    char value = (char)va_arg(ap, int);
+	    *buffer++ = value;
+	    printf(">> %c\n", value);
+	    break;
+	  }
 	case 'i':
-	  int value = va_arg(ap, int);
-	  *buffer++ = value >> 24;
-	  *buffer++ = value >> 16;
-	  *buffer++ = value >> 8;
-	  *buffer++ = value;
-	  printf(">> %i\n", value);
-	  break;
+	  {
+	    int value = va_arg(ap, int);
+	    *buffer++ = value >> 24;
+	    *buffer++ = value >> 16;
+	    *buffer++ = value >> 8;
+	    *buffer++ = value;
+	    printf(">> %i\n", value);
+	    break;
+	  }
 	case 'f':
-	  printf(">> %f\n", (float)va_arg(ap, double));
-	  break;
+	  {
+	    printf(">> %f\n", (float)va_arg(ap, double));
+	    break;
+	  }
 	case 's':
-	  char* value = va_arg(ap, char*);
-	  memcpy(buffer, value, strlen(value) +1);
-	  break;
+	  {
+	    char* value = va_arg(ap, char*);
+	    memcpy(buffer, value, strlen(value) +1);
+	    break;
+	  }
 	}
       format++;
     }
@@ -54,7 +62,7 @@ int main()
 
   char buffer[1024];
 
-  initServer(&sSocketTCP, &sSocketUDP, &serverTCP, &serverUDP);
+  init_server(&sSocketTCP, &sSocketUDP, &serverTCP, &serverUDP);
   printf("Server is listenning on port %d...\n", htons(serverTCP.sin_port));
 
   while (1)

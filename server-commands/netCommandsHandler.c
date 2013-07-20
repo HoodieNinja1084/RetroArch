@@ -1,74 +1,74 @@
 #include "netCommandsHandler.h"
 
-void HandleMeOpcode()
+void handle_me_opcode(void)
 {
 }
 
-void HandleInfoOpcode()
+void handle_info_opcode(void)
 {
 }
 
-void HandleButtonBOpcode()
-{
-  // For every HandleButton* we call the associated function of RetroArch
-}
-
-void HandleButtonYOpcode()
+// For every handle_button_* we call the associated function of RetroArch
+void handle_button_b_opcode(void)
 {
 }
 
-void HandleButtonSelectOpcode()
+void handle_button_y_opcode(void)
 {
 }
 
-void HandleButtonStartOpcode()
+void handle_button_select_opcode(void)
 {
 }
 
-void HandleButtonUpOpcode()
+void handle_button_start_opcode(void)
 {
 }
 
-void HandleButtonDownOpcode()
+void handle_button_up_opcode(void)
 {
 }
 
-void HandleButtonLeftOpcode()
+void handle_button_down_opcode(void)
 {
 }
 
-void HandleButtonRightOpcode()
+void handle_button_left_opcode(void)
 {
 }
 
-void HandleButtonAOpcode()
+void handle_button_right_opcode(void)
 {
 }
 
-void HandleButtonXOpcode()
+void handle_button_a_opcode(void)
 {
 }
 
-void HandleButtonLOpcode()
+void handle_button_x_opcode(void)
 {
 }
 
-void HandleButtonROpcode()
+void handle_button_l_opcode(void)
 {
 }
 
-void HandleButtonL2Opcode()
+void handle_button_r_opcode(void)
 {
 }
 
-void HandleButtonR2Opcode()
+void handle_button_l2_opcode(void)
 {
 }
 
-void HandleButtonL3Opcode()
+void handle_button_r2_opcode(void)
 {
 }
 
-void HandleButtonR3Opcode()
+void handle_button_l3_opcode(void)
+{
+}
+
+void handle_button_r3_opcode(void)
 {
 }
