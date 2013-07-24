@@ -4,6 +4,7 @@ NAME = server
 SRC = main.c \
       xfunc.c \
       init.c \
+      netPackets.c \
       netCommandsHandler.c \
       netPacketsDef.c
 OBJS = $(SRC:.c=.o)

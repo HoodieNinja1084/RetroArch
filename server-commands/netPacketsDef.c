@@ -5,7 +5,6 @@
 Format:
   c = char
   i = integer
-  f = float
   s = string
  */
 struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM] = {
@@ -31,5 +30,5 @@ struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM] = {
   {"CMSG_BUTTON_R2",	"c",	&handle_button_r2_opcode},
   {"CMSG_BUTTON_L3",	"c",	&handle_button_l3_opcode},
   {"CMSG_BUTTON_R3",	"c",	&handle_button_r3_opcode},
-  {"SMSG_QUIT_GAME",	"",	NULL}
+  {"SMSG_QUIT_GAME",	"c",	NULL}
 };
