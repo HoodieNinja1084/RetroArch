@@ -1,6 +1,6 @@
 #include "netPackets.h"
 
-packet_t bluid_packet(uint32_t opcode, ...)
+packet_t build_packet(uint32_t opcode, ...)
 {
   packet_t packetData;
   va_list args;

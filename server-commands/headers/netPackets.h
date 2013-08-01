@@ -11,7 +11,7 @@ typedef struct packet
   const unsigned char* data;
 } packet_t;
 
-packet_t bluid_packet(uint32_t, ...);
+packet_t build_packet(uint32_t, ...);
 uint32_t calculate_size(const char*, ...);
 const unsigned char* serialize(uint32_t, const char*, ...);
 
