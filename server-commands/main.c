@@ -16,9 +16,9 @@ int main()
 
   while (1)
     {
-      build_packet(SMSG_INFO, 42, "Super-Mario");
+      packet_t pkt = build_packet(SMSG_INFO, 42, "Super-Mario");
       //char pkt[7] = "coucou\n";
-      //sendto(sSocketUDP, (const char *)pkt, sizeof(pkt), 0L, (struct sockaddr *)&serverUDP, sizeof(serverUDP));
+      sendto(sSocketUDP, &pkt, sizeof(pkt), 0,(struct sockaddr *)&serverUDP, sizeof(serverUDP));
       sleep(3);
     }
 

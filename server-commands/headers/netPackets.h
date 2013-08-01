@@ -8,11 +8,11 @@
 typedef struct packet
 {
   uint32_t opcode;
-  const unsigned char* data;
+  const char* data;
 } packet_t;
 
 packet_t build_packet(uint32_t, ...);
-uint32_t calculate_size(const char*, ...);
-const unsigned char* serialize(uint32_t, const char*, ...);
+uint32_t calculate_size(va_list, const char*);
+const char* serialize(uint32_t, va_list, const char*);
 
 #endif /* !__NETPACKETS_H__ */

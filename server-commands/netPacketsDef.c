@@ -10,8 +10,8 @@ Format:
 struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM] = {
   {"SMSG_NULL",		"",	NULL},
   {"SMSG_WHO_IS_HERE",	"",	NULL},
-  {"CMSG_ME",		"sc",	&handle_me_opcode},
-  {"SMSG_INFO",		"cs",	NULL},
+  {"CMSG_ME",		"si",	&handle_me_opcode},
+  {"SMSG_INFO",		"is",	NULL},
   {"CMSG_INFO",		"c",	&handle_info_opcode},
   {"SMSG_LAUNCHING_GAME",	"",	NULL},
   {"CMSG_BUTTON_B",	"c",	&handle_button_b_opcode},
