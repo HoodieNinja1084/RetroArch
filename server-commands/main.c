@@ -1,4 +1,4 @@
-#include "shared_defines.h"
+#include "netSharedDefines.h"
 #include "netPackets.h"
 #include "netPacketsDef.h"
 

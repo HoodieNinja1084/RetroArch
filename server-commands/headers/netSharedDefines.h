@@ -11,8 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "xfunc.h"
-#include "init.h"
+#include "netXFunc.h"
+#include "netInit.h"
 
 # define TCP_PORT 3000
 # define UDP_PORT 3001

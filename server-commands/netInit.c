@@ -1,4 +1,4 @@
-#include "init.h"
+#include "netInit.h"
 
 void init_server(uint32_t* sSocketTCP, uint32_t* sSocketUDP, struct sockaddr_in* serverTCP, struct sockaddr_in* serverUDP)
 {

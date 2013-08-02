@@ -1,4 +1,4 @@
-#include "xfunc.h"
+#include "netXFunc.h"
 
 int xsocket(int domain, int type, int protocol)
 {

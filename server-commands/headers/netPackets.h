@@ -2,7 +2,7 @@
 # define __NETPACKETS_H__
 
 #include <stdarg.h>
-#include "shared_defines.h"
+#include "netSharedDefines.h"
 #include "netPacketsDef.h"
 
 typedef struct packet

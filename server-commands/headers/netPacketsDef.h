@@ -1,7 +1,7 @@
 #ifndef __NETPACKETSDEF_H__
 # define __NETPACKETSDEF_H__
 
-#include "shared_defines.h"
+#include "netSharedDefines.h"
 
 enum Opcode {
   SMSG_WHO_IS_HERE	= 0x01,

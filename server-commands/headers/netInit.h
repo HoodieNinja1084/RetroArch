@@ -1,7 +1,7 @@
 #ifndef __INIT_H__
 # define __INIT_H__
 
-#include "shared_defines.h"
+#include "netSharedDefines.h"
 
 void init_server(uint32_t*, uint32_t*, struct sockaddr_in*, struct sockaddr_in*);
 void init_client(uint32_t*, uint32_t*, struct sockaddr_in*);

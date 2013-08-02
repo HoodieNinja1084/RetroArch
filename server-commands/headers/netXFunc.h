@@ -1,7 +1,7 @@
 #ifndef __XFUNC_H__
 # define __XFUNC_H__
 
-#include "shared_defines.h"
+#include "netSharedDefines.h"
 
 int xsocket(int domain, int type, int protocol);
 int xbind(int socket, const struct sockaddr *address, socklen_t address_len);
