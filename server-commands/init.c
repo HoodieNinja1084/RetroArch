@@ -10,7 +10,7 @@ void init_server(uint32_t* sSocketTCP, uint32_t* sSocketUDP, struct sockaddr_in*
   xbind(*sSocketTCP, (const struct sockaddr *)serverTCP, sizeof(*serverTCP));
   xlisten(*sSocketTCP, MAX_CLIENT);
 
-  *sSocketUDP = xsocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  *sSocketUDP = xsocket(AF_INET, SOCK_DGRAM, 0);
   uint32_t broadcast = 1;
   if (setsockopt(*sSocketUDP, SOL_SOCKET, SO_BROADCAST, (void*)&broadcast, sizeof(broadcast)) < 0){
     printf("setsockopt error");
@@ -19,7 +19,8 @@ void init_server(uint32_t* sSocketTCP, uint32_t* sSocketUDP, struct sockaddr_in*
 
   serverUDP->sin_port = htons(UDP_PORT);
   serverUDP->sin_family = AF_INET;
-  serverUDP->sin_addr.s_addr = htonl(INADDR_ANY);
+  //inet_pton(AF_INET, "172.255.255.255", &(serverUDP->sin_addr));
+  serverUDP->sin_addr.s_addr = htonl(INADDR_BROADCAST);
 }
 
 void init_client(uint32_t* cSocket, uint32_t* sSocketTCP, struct sockaddr_in* client)
