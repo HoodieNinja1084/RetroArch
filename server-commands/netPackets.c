@@ -1,30 +1,25 @@
+#include <string.h>
 #include "netPackets.h"
 
-packet_t build_packet(uint32_t opcode, ...)
+packet_t build_packet(uint8_t opcode, ...)
 {
-  packet_t packetData;
-  va_list ap, aq;
+  packet_t packet;
+  va_list ap;
 
   va_start(ap, opcode);
-  va_copy(aq, ap);
 
-  const char* format = opcodeTable[opcode].format;
-  uint32_t size = calculate_size(aq, format);
-
-  packetData.opcode = opcode;
-  packetData.data = serialize(size, ap, format);
-
+  packet.opcode = opcode;
+  serialize(ap, opcodeTable[opcode].format, packet.data);
+  
   va_end(ap);
-
-  return (packetData);
+  
+  return (packet);
 }
 
-const char* serialize(uint32_t packetSize, va_list ap, const char* format)
+void serialize(va_list ap, const char* format, unsigned char* buffer)
 {
-  char* saveBuffer;
-  char* buffer = malloc(packetSize);
+  memset(buffer, '\0', MAX_BYTE);
 
-  saveBuffer = buffer;
   while (*format != '\0')
     {
       switch (*format)
@@ -32,7 +27,7 @@ const char* serialize(uint32_t packetSize, va_list ap, const char* format)
 	case 'c':
 	  {
 	    uint8_t value = (uint8_t)va_arg(ap, int);
-	    *buffer++ = (value) & 0xFF;
+	    *buffer++ =  (value) & 0xFF;
 	    break;
 	  }
 	case 'i':
@@ -47,50 +42,12 @@ const char* serialize(uint32_t packetSize, va_list ap, const char* format)
 	case 's':
 	  {
 	    char* value = va_arg(ap, char*);
-	    memcpy(buffer, value, strlen(value));
+	    //sprintf((char*)buffer, "%lu%s", strlen(value), value); // Do you really need to write/append str size before ?
+	    sprintf((char*)buffer, "%s", value);
 	    buffer += strlen(value);
 	    break;
 	  }
 	}
       format++;
     }
-
-  return (buffer);
-}
-
-uint32_t calculate_size(va_list aq, const char* format)
-{
-  uint32_t packetSize = 0; // in bytes
-
-  while (*format != '\0')
-    {
-      switch (*format)
-	{
-	case 'c':
-	  {
-	    va_arg(aq, int); 
-	    packetSize += 1;
-	    break;
-	  }
-	case 'i':
-	  {
-	    va_arg(aq, int);
-      	    packetSize += 4;
-	    break;
-	  }
-	case 's':
-	  {
-	    char* value = va_arg(aq, char*);
-	    packetSize += 4 * strlen(value);
-	    break;
-	  }
-	}
-      format++;
-    }
-
-  va_end(aq);
-
-  printf("Packet created with a length of %u bytes\n", packetSize);
-
-  return (packetSize);
 }

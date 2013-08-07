@@ -5,14 +5,16 @@
 #include "netSharedDefines.h"
 #include "netPacketsDef.h"
 
+#define MAX_BYTE 64
+
 typedef struct packet
 {
-  uint32_t opcode;
-  const char* data;
+  uint8_t opcode:5; // 5 bits : 0 - 31
+  unsigned char data[MAX_BYTE];
 } packet_t;
 
-packet_t build_packet(uint32_t, ...);
-uint32_t calculate_size(va_list, const char*);
-const char* serialize(uint32_t, va_list, const char*);
+
+packet_t build_packet(uint8_t, ...);
+void serialize(va_list, const char*, unsigned char*);
 
 #endif /* !__NETPACKETS_H__ */
