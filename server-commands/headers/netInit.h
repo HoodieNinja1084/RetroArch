@@ -3,7 +3,8 @@
 
 #include "netSharedDefines.h"
 
-void init_server(uint32_t*, uint32_t*, struct sockaddr_in*, struct sockaddr_in*);
-void init_client(uint32_t*, uint32_t*, struct sockaddr_in*);
+void launch_server(void);
+void init_server(network_t*);
+client_t* new_client(network_t*);
 
 #endif /* !__INIT_H__ */

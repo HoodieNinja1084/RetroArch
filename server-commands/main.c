@@ -1,26 +1,78 @@
 #include "netSharedDefines.h"
+#include "netInit.h"
 #include "netPackets.h"
 #include "netPacketsDef.h"
 
-int main()
+void launch_server(void)
 {
-  //uint32_t cSocket;
-  uint32_t sSocketTCP;
-  uint32_t sSocketUDP;
-  //struct sockaddr_in client;
-  struct sockaddr_in serverTCP;
-  struct sockaddr_in serverUDP;
+  fd_set readfs;
+  fd_set writefs;
+  network_t netInfo;
 
-  init_server(&sSocketTCP, &sSocketUDP, &serverTCP, &serverUDP);
-  printf("Server is listenning on port %d...\n", htons(serverTCP.sin_port));
+  init_server(&netInfo);
+  printf("Server is listenning on TCP port %d and UDP port %d\n", htons(netInfo.serverTCP.sin_port), htons(netInfo.serverUDP.sin_port));
 
+  uint8_t max = netInfo.sSocketUDP;
+  uint8_t actual = 0;
   while (1)
     {
-      packet_t pkt = build_packet(SMSG_INFO, 42, "Super-Mario : Sunshine");
-      sendto(sSocketUDP, &pkt, sizeof(pkt), 0,(struct sockaddr *)&serverUDP, sizeof(serverUDP));
-      sleep(3);
+      FD_ZERO(&readfs);
+      FD_ZERO(&writefs);
+      FD_SET(netInfo.sSocketTCP, &readfs);
+      FD_SET(netInfo.sSocketUDP, &writefs);
+
+      uint8_t i;
+      for (i = 0; i < actual; i++)
+	FD_SET(netInfo.clients[i]->socket, &readfs);
+
+      select(max + 1, &readfs, &writefs, NULL, NULL);
+
+      if (FD_ISSET(netInfo.sSocketUDP, &writefs))
+	{
+	  if (netInfo.nbClients < MAX_CLIENT)
+	    {
+	      packet_t pkt = build_packet(SMSG_WHO_IS_HERE);
+	      sendto(netInfo.sSocketUDP, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverUDP, sizeof(netInfo.serverUDP));
+	      sleep(3);
+	    }
+	}
+      if (FD_ISSET(netInfo.sSocketTCP, &readfs))
+	{
+	  // new client
+	  netInfo.clients[actual] = new_client(&netInfo);
+	  netInfo.nbClients++;
+
+	  printf("New client '%s' connected.\n", netInfo.clients[actual]->name);
+
+	  uint32_t csock = netInfo.clients[actual]->socket;
+	  FD_SET(csock, &readfs);
+	  max = csock > max ? csock : max;
+	  actual++;
+	}
+      else
+	{
+	  // a client is talking
+	  for (i = 0; i < actual; i++)
+	    {
+	      // find which one
+	      if (FD_ISSET(netInfo.clients[i]->socket, &readfs))
+		{
+		  client_t* client = netInfo.clients[i];
+		  
+		  char buffer[BUFFER_SIZE];
+		  int n = 0;
+		  n = recv(client->socket, buffer, BUFFER_SIZE - 1, 0);
+		  buffer[n] = '\0';
+
+		  printf("%s send '%s'\n", client->name, buffer);
+		}
+	    }
+	}
     }
+}
 
-
+int main()
+{
+  launch_server();
   return (EXIT_SUCCESS);
 }

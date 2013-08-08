@@ -6,11 +6,11 @@ packet_t build_packet(uint8_t opcode, ...)
   packet_t packet;
   va_list ap;
 
-  va_start(ap, opcode);
+  printf("Sending packet with opcode 0x%02x\n", opcode);
 
+  va_start(ap, opcode);
   packet.opcode = opcode;
   serialize(ap, opcodeTable[opcode].format, packet.data);
-  
   va_end(ap);
   
   return (packet);

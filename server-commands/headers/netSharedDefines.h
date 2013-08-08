@@ -12,10 +12,27 @@
 #include <unistd.h>
 
 #include "netXFunc.h"
-#include "netInit.h"
 
 # define TCP_PORT 3000
 # define UDP_PORT 3001
-# define MAX_CLIENT 42
+# define MAX_CLIENT 4
+
+# define BUFFER_SIZE 256
+typedef struct client
+{
+  uint32_t socket;
+  unsigned char name[BUFFER_SIZE];
+} client_t;
+
+
+typedef struct network
+{
+  uint32_t sSocketTCP;
+  uint32_t sSocketUDP;
+  struct sockaddr_in serverTCP;
+  struct sockaddr_in serverUDP; 
+  client_t* clients[MAX_CLIENT];
+  uint32_t nbClients;
+} network_t;
 
 #endif /* !__SHARED_DEFINES_H__ */

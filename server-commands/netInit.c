@@ -1,32 +1,44 @@
 #include "netInit.h"
 
-void init_server(uint32_t* sSocketTCP, uint32_t* sSocketUDP, struct sockaddr_in* serverTCP, struct sockaddr_in* serverUDP)
+void init_server(network_t* netInfo)
 {
-  serverTCP->sin_port = htons(TCP_PORT);
-  serverTCP->sin_family = AF_INET;
-  serverTCP->sin_addr.s_addr = htonl(INADDR_ANY);
+  netInfo->serverTCP.sin_addr.s_addr = htonl(INADDR_ANY);
+  netInfo->serverTCP.sin_port = htons(TCP_PORT);
+  netInfo->serverTCP.sin_family = AF_INET;
+ 
+  netInfo->sSocketTCP = xsocket(AF_INET, SOCK_STREAM, 0);
+  xbind(netInfo->sSocketTCP, (const struct sockaddr *)&netInfo->serverTCP, sizeof(netInfo->serverTCP));
+  xlisten(netInfo->sSocketTCP, MAX_CLIENT);
 
-  *sSocketTCP = xsocket(AF_INET, SOCK_STREAM, 0);
-  xbind(*sSocketTCP, (const struct sockaddr *)serverTCP, sizeof(*serverTCP));
-  xlisten(*sSocketTCP, MAX_CLIENT);
-
-  *sSocketUDP = xsocket(AF_INET, SOCK_DGRAM, 0);
+  netInfo->sSocketUDP = xsocket(AF_INET, SOCK_DGRAM, 0);
   uint32_t broadcast = 1;
-  if (setsockopt(*sSocketUDP, SOL_SOCKET, SO_BROADCAST, (void*)&broadcast, sizeof(broadcast)) < 0){
+  if (setsockopt(netInfo->sSocketUDP, SOL_SOCKET, SO_BROADCAST, (void*)&broadcast, sizeof(broadcast)) < 0){
     printf("setsockopt error");
     exit(EXIT_FAILURE);
   }
 
-  serverUDP->sin_port = htons(UDP_PORT);
-  serverUDP->sin_family = AF_INET;
-  //inet_pton(AF_INET, "172.255.255.255", &(serverUDP->sin_addr));
-  serverUDP->sin_addr.s_addr = htonl(INADDR_BROADCAST);
+  netInfo->serverUDP.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+  netInfo->serverUDP.sin_port = htons(UDP_PORT);
+  netInfo->serverUDP.sin_family = AF_INET;
+
+  netInfo->nbClients = 0;
 }
 
-void init_client(uint32_t* cSocket, uint32_t* sSocketTCP, struct sockaddr_in* client)
+client_t* new_client(network_t* netInfo)
 {
-  socklen_t structLen;
+  struct sockaddr_in csin;
+  size_t csinsize = sizeof(csin);
 
-  structLen = sizeof(*client);
-  *cSocket = xaccept(*sSocketTCP, (struct sockaddr *)client, &structLen);
+  uint32_t csock = accept(netInfo->sSocketTCP, (struct sockaddr *)&csin, (socklen_t *)&csinsize);
+
+  char buffer[BUFFER_SIZE];
+  int n = 0;
+  n = recv(csock, buffer, BUFFER_SIZE - 1, 0);
+  buffer[n] = '\0';
+  
+  client_t* client = malloc(sizeof(*client));
+  client->socket = csock; 
+  strcpy(client->name, buffer);
+
+  return (client);  
 }

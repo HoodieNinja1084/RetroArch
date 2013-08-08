@@ -18,11 +18,11 @@ int main(int argc, char** argv)
   recv(s, &buffer, sizeof(buffer), 0);
 
   char* buf = buffer.data; // format is is
-  unsigned int nb = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
 
-  buf += 4;
+  //  unsigned int nb = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+  // buf += 4;
 
-  printf(">>> nb %u\n", nb);
+  printf(">>> opcode %u\n", buffer.opcode);
   printf(">>> data : %s<<<<\n", buf);
   return (0);
 }
