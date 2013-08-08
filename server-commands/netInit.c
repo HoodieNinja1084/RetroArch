@@ -31,14 +31,18 @@ client_t* new_client(network_t* netInfo)
 
   uint32_t csock = accept(netInfo->sSocketTCP, (struct sockaddr *)&csin, (socklen_t *)&csinsize);
 
-  char buffer[BUFFER_SIZE];
-  int n = 0;
-  n = recv(csock, buffer, BUFFER_SIZE - 1, 0);
-  buffer[n] = '\0';
+  // Waiting for CMSG_ME from client
+  packet_t pkt;
+  recv(csock, &pkt, sizeof(pkt), 0);  
   
+  // deserialize data from packet
+  // int : phone type
+  // string : phone name
+
+  // setup new client
   client_t* client = malloc(sizeof(*client));
   client->socket = csock; 
-  strcpy(client->name, buffer);
+  strcpy(client->name, "TODO");
 
   return (client);  
 }
