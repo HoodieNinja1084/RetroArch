@@ -33,7 +33,7 @@ struct s_OpcodeHandler
 {
   char const* name;
   char const* format;
-  void (*handler)();
+  void (*handler)(char*);
 };
 
 extern struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM];

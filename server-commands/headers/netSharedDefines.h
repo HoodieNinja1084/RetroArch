@@ -21,7 +21,7 @@
 typedef struct client
 {
   uint32_t socket;
-  unsigned char name[BUFFER_SIZE];
+  char name[BUFFER_SIZE];
 } client_t;
 
 

@@ -42,7 +42,7 @@ void launch_server(void)
 	  netInfo.clients[actual] = new_client(&netInfo);
 	  netInfo.nbClients++;
 
-	  printf("New client '%s' connected.\n", netInfo.clients[actual]->name);
+	  printf("New client connected.\n");
 
 	  uint32_t csock = netInfo.clients[actual]->socket;
 	  FD_SET(csock, &readfs);
@@ -59,12 +59,13 @@ void launch_server(void)
 		{
 		  client_t* client = netInfo.clients[i];
 		  
-		  char buffer[BUFFER_SIZE];
-		  int n = 0;
-		  n = recv(client->socket, buffer, BUFFER_SIZE - 1, 0);
-		  buffer[n] = '\0';
+		  packet_t pkt;
+		  recv(client->socket, &pkt, sizeof(pkt), 0);
+		  
+		  struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
+		  printf("Receiving opcode %s(0x%02x)\n", opcode.name, pkt.opcode);
 
-		  printf("%s send '%s'\n", client->name, buffer);
+		  (*opcode.handler)(pkt.data);
 		}
 	    }
 	}

@@ -1,4 +1,3 @@
-#include <string.h>
 #include "netPackets.h"
 
 packet_t build_packet(uint8_t opcode, ...)
@@ -16,7 +15,7 @@ packet_t build_packet(uint8_t opcode, ...)
   return (packet);
 }
 
-void serialize(va_list ap, const char* format, unsigned char* buffer)
+void serialize(va_list ap, const char* format, char* buffer)
 {
   memset(buffer, '\0', MAX_BYTE);
 
@@ -42,7 +41,15 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
 	case 's':
 	  {
 	    char* value = va_arg(ap, char*);
-	    //sprintf((char*)buffer, "%lu%s", strlen(value), value); // Do you really need to write/append str size before ?
+	    uint32_t len = strlen(value);
+	    
+	    //append string lenght
+	    *buffer++ = (len >> 24) & 0xFF;
+	    *buffer++ = (len >> 14) & 0xFF;
+	    *buffer++ = (len >> 8) & 0xFF;
+	    *buffer++ = (len) & 0xFF;
+
+	    // now string
 	    sprintf((char*)buffer, "%s", value);
 	    buffer += strlen(value);
 	    break;
@@ -50,4 +57,37 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
 	}
       format++;
     }
+}
+
+uint8_t deserialize_uint8(char* data)
+{
+  uint8_t val;
+
+  val = data[0];
+  data += 1; // shift pointer from 1 bytes (size of int on most of systems)
+
+  return (val);
+}
+
+uint32_t deserialize_uint32(char* data)
+{
+  uint32_t val;
+
+  val = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+  data += 4; // shift pointer from 4 bytes (size of int on most of systems)
+
+  return (val);
+}
+
+char* deserialize_string(char* data)
+{
+  uint32_t len;
+  char* str;
+
+  len = deserialize_uint32(data);
+  str = malloc(sizeof(*str) * len);
+  strncpy(str, data, len);
+  data += len;
+  
+  return (str);
 }
