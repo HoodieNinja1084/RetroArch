@@ -20,6 +20,7 @@
 # define BUFFER_SIZE 256
 typedef struct client
 {
+  uint8_t type;
   uint32_t socket;
   char name[BUFFER_SIZE];
 } client_t;
