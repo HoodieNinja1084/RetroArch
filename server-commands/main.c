@@ -65,6 +65,7 @@ void launch_server(void)
 		  struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
 		  printf("Receiving opcode %s(0x%02x)\n", opcode.name, pkt.opcode);
 
+		  // call appropriate handler
 		  (*opcode.handler)(client, pkt.data);
 		}
 	    }

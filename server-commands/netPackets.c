@@ -5,7 +5,7 @@ packet_t build_packet(uint8_t opcode, ...)
   packet_t packet;
   va_list ap;
 
-  printf("Sending packet with opcode 0x%02x\n", opcode);
+  printf("Sending packet %s(0x%02x)\n", opcodeTable[opcode].name, opcode);
 
   va_start(ap, opcode);
   packet.opcode = opcode;
@@ -15,7 +15,7 @@ packet_t build_packet(uint8_t opcode, ...)
   return (packet);
 }
 
-void serialize(va_list ap, const char* format, char* buffer)
+void serialize(va_list ap, const char* format, unsigned char* buffer)
 {
   memset(buffer, '\0', MAX_BYTE);
 
@@ -25,13 +25,13 @@ void serialize(va_list ap, const char* format, char* buffer)
 	{
 	case 'c':
 	  {
-	    uint8_t value = (uint8_t)va_arg(ap, int);
+	    uint8_t value = (uint8_t)va_arg(ap, uint32_t);
 	    *buffer++ =  (value) & 0xFF;
 	    break;
 	  }
 	case 'i':
 	  {
-	    uint32_t value = va_arg(ap, int);
+	    uint32_t value = va_arg(ap, uint32_t);
 	    *buffer++ = (value >> 24) & 0xFF;
 	    *buffer++ = (value >> 14) & 0xFF;
 	    *buffer++ = (value >> 8) & 0xFF;
@@ -59,35 +59,28 @@ void serialize(va_list ap, const char* format, char* buffer)
     }
 }
 
-uint8_t deserialize_uint8(char* data)
+unsigned char* deserialize_uint8(unsigned char** data, uint8_t* val)
 {
-  uint8_t val;
+  *val = *data[0];
+  *data += sizeof(uint8_t); // shift pointer from 1 bytes (size of int on most of systems)
 
-  val = data[0];
-  data += 1; // shift pointer from 1 bytes (size of int on most of systems)
-
-  return (val);
+  return (*data);
 }
 
-uint32_t deserialize_uint32(char* data)
+unsigned char* deserialize_uint32(unsigned char** data, uint32_t* val)
 {
-  uint32_t val;
+  *val = ((*data)[0] << 24) | ((*data)[1] << 16) | ((*data)[2] << 8) | (*data)[3];
+  *data += sizeof(uint32_t); // shift pointer from 4 bytes (size of int on most of systems)
 
-  val = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-  data += 4; // shift pointer from 4 bytes (size of int on most of systems)
-
-  return (val);
+  return (*data);
 }
 
-char* deserialize_string(char* data)
+unsigned char* deserialize_string(unsigned char** data, char* str)
 {
   uint32_t len;
-  char* str;
 
-  len = deserialize_uint32(data);
-  str = malloc(sizeof(*str) * len);
-  strncpy(str, data, len);
-  data += len;
-  
-  return (str);
+  *data = deserialize_uint32(data, &len);
+  strncpy(str, (char*)*data, len);
+  *data += len;
+  return (*data);
 }

@@ -22,7 +22,7 @@ int main(int argc, char** argv)
   //  unsigned int nb = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
   // buf += 4;
 
-  buffer.opcode = 2;
+  buffer = build_packet(CMSG_ME, 42, "Je suis un iPhone42s");
   while(1)
     {
       send(s, &buffer, sizeof(buffer), 0);
