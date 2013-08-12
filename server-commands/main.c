@@ -6,7 +6,6 @@
 void launch_server(void)
 {
   fd_set readfs;
-  fd_set writefs;
   network_t netInfo;
 
   init_server(&netInfo);
@@ -17,25 +16,21 @@ void launch_server(void)
   while (1)
     {
       FD_ZERO(&readfs);
-      FD_ZERO(&writefs);
       FD_SET(netInfo.sSocketTCP, &readfs);
-      FD_SET(netInfo.sSocketUDP, &writefs);
 
       uint8_t i;
       for (i = 0; i < actual; i++)
 	FD_SET(netInfo.clients[i]->socket, &readfs);
 
-      select(max + 1, &readfs, &writefs, NULL, NULL);
-
-      if (FD_ISSET(netInfo.sSocketUDP, &writefs))
+      if (netInfo.nbClients < MAX_CLIENT)
 	{
-	  if (netInfo.nbClients < MAX_CLIENT)
-	    {
-	      packet_t pkt = build_packet(SMSG_WHO_IS_HERE);
-	      sendto(netInfo.sSocketUDP, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverUDP, sizeof(netInfo.serverUDP));
-	      sleep(3);
-	    }
+	  packet_t pkt = build_packet(SMSG_WHO_IS_HERE);
+	  sendto(netInfo.sSocketUDP, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverUDP, sizeof(netInfo.serverUDP));
 	}
+
+      struct timeval timeout = {3, 0};
+      select(max + 1, &readfs, NULL, NULL, &timeout);
+
       if (FD_ISSET(netInfo.sSocketTCP, &readfs))
 	{
 	  // new client
