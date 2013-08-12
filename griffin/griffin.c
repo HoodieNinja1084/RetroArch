@@ -111,6 +111,7 @@ VIDEO CONTEXT
 #include "../gfx/context/apple_gl_ctx.c"
 #endif
 
+
 #if defined(HAVE_OPENGL)
 
 #if defined(HAVE_KMS)
@@ -186,6 +187,11 @@ VIDEO DRIVER
 #include "../gfx/math/matrix_3x3.c"
 #endif
 
+#ifdef HAVE_OMAP
+#include "../gfx/omap_gfx.c"
+#include "../gfx/fbdev.c"
+#endif
+
 #ifdef HAVE_DYLIB
 #include "../gfx/ext_gfx.c"
 #endif
@@ -198,12 +204,16 @@ VIDEO DRIVER
 
 #ifdef HAVE_OPENGL
 #include "../gfx/gl.c"
+
+#ifndef HAVE_PSGL
 #include "../gfx/glsym/rglgen.c"
 #ifdef HAVE_OPENGLES2
 #include "../gfx/glsym/glsym_es2.c"
 #else
 #include "../gfx/glsym/glsym_gl.c"
 #endif
+#endif
+
 #endif
 
 #ifdef HAVE_XVIDEO
@@ -216,10 +226,8 @@ VIDEO DRIVER
 
 #if defined(GEKKO)
 #include "../gx/gx_video.c"
-#elif defined(SN_TARGET_PSP2)
-#include "../vita/vita_video.c"
-//#elif defined(PSP)
-//#include "../psp1/psp1_video.c"
+#elif defined(PSP)
+#include "../psp1/psp1_video.c"
 #elif defined(XENON)
 #include "../xenon/xenon360_video.c"
 #endif
@@ -296,7 +304,7 @@ INPUT
 #include "../blackberry-qnx/qnx_input.c"
 #endif
 
-#if defined(PANDORA) 
+#if defined(__linux__) && !defined(ANDROID) 
 #include "../input/linuxraw_input.c"
 #include "../input/linuxraw_joypad.c"
 #endif
@@ -450,9 +458,7 @@ REWIND
 FRONTEND
 ============================================================ */
 
-#if defined(RARCH_CONSOLE)
 #include "../frontend/frontend_context.c"
-#endif
 
 #if defined(__CELLOS_LV2__)
 #include "../frontend/platform/platform_ps3.c"
@@ -462,6 +468,10 @@ FRONTEND
 #include "../frontend/platform/platform_xdk.c"
 #elif defined(PSP)
 #include "../frontend/platform/platform_psp.c"
+#elif defined(__QNX__)
+#include "../frontend/platform/platform_qnx.c"
+#elif defined(OSX) || defined(IOS)
+#include "../frontend/platform/platform_apple.c"
 #endif
 
 /*============================================================
@@ -471,8 +481,6 @@ MAIN
 #include "../frontend/frontend_xenon.c"
 #elif defined(ANDROID)
 #include "../frontend/frontend_android.c"
-#elif defined(IOS) || defined(OSX)
-#include "../frontend/frontend_objc.c"
 #else
 #include "../frontend/frontend.c"
 #endif

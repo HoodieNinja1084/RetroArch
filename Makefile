@@ -3,6 +3,7 @@ include config.mk
 TARGET = retroarch tools/retroarch-joyconfig tools/retrolaunch/retrolaunch
 
 OBJ = frontend/frontend.o \
+		frontend/frontend_context.o \
 		retroarch.o \
 		file.o \
 		file_path.o \
@@ -183,6 +184,10 @@ ifeq ($(HAVE_SDL), 1)
    JOYCONFIG_OBJ += input/sdl_joypad.o
    DEFINES += $(SDL_CFLAGS) $(BSD_LOCAL_INC)
    LIBS += $(SDL_LIBS)
+endif
+
+ifeq ($(HAVE_OMAP), 1)
+	OBJ += gfx/omap_gfx.o gfx/fbdev.o
 endif
 
 ifeq ($(HAVE_OPENGL), 1)

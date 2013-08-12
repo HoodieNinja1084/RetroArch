@@ -405,7 +405,6 @@ void retro_run(void)
       glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
    }
 #endif
-
    video_cb(RETRO_HW_FRAME_BUFFER_VALID, width, height, 0);
 }
 

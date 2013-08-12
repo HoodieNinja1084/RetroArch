@@ -60,6 +60,9 @@ def replace_global_vertex(source):
 
    source = replace_global_in(source)
    replace_table = [
+         ('attribute', 'COMPAT_ATTRIBUTE'),
+         ('varying', 'COMPAT_VARYING'),
+         ('texture2D', 'COMPAT_TEXTURE'),
          ('POSITION', 'VertexCoord'),
          ('TEXCOORD1', 'LUTTexCoord'),
          ('TEXCOORD0', 'TexCoord'),
@@ -70,10 +73,6 @@ def replace_global_vertex(source):
          ('_IN1._mvp_matrix[1]', 'MVPMatrix[1]'),
          ('_IN1._mvp_matrix[2]', 'MVPMatrix[2]'),
          ('_IN1._mvp_matrix[3]', 'MVPMatrix[3]'),
-         ('MVPMatrix[0]', 'MVPMatrix_[0]'),
-         ('MVPMatrix[1]', 'MVPMatrix_[1]'),
-         ('MVPMatrix[2]', 'MVPMatrix_[2]'),
-         ('MVPMatrix[3]', 'MVPMatrix_[3]'),
 
          ('FrameCount', 'float(FrameCount)'),
          ('FrameDirection', 'float(FrameDirection)'),
@@ -147,7 +146,7 @@ def destructify_varyings(source, direction):
             while (j < len(source)) and ('};' not in source[j]):
                j += 1
 
-            lines = ['varying ' + string for string in source[i + 1 : j]]
+            lines = ['COMPAT_VARYING ' + string for string in source[i + 1 : j]]
             varyings.extend(lines)
             names = [string.strip().split(' ')[1].split(';')[0].strip() for string in source[i + 1 : j]]
             varyings_name.extend(names)
@@ -177,12 +176,15 @@ def destructify_varyings(source, direction):
 
       for struct in struct_types:
          if struct in line:
-            variable = line.split(' ')[1].split(';')[0]
+            decomment_line = line.split('//')[0].strip()
+            if len(decomment_line) == 0:
+               continue
+            variable = decomment_line.split(' ')[1].split(';')[0]
 
             # Only redirect if the struct is actually used as vertex output.
             for vout_line in vout_lines:
                if variable in vout_line:
-                  log('Found struct variable for', struct + ':', variable)
+                  log('Found struct variable for', struct + ':', variable, 'in line:', line)
                   variables.append(variable)
                   break
 
@@ -325,29 +327,27 @@ def replace_varyings(source):
          translated = translate_varying(orig)
          if translated != orig and translated not in attribs:
             cg_attrib = line.split(':')[2].split(' ')[1]
-            translations.append((cg_attrib, translated))
-            attribs.append(translated)
+            if len(cg_attrib.strip()) > 0:
+               translations.append((cg_attrib, translated))
+               attribs.append(translated)
       elif ('//var' in line) or ('#var' in line):
          orig = line.split(' ')[2]
          translated = translate_texture_size(orig)
          if translated != orig and translated not in uniforms:
             cg_uniform = line.split(':')[2].split(' ')[1]
-            translations.append((cg_uniform, translated))
-            uniforms.append(translated)
+            if len(cg_uniform.strip()) > 0:
+               translations.append((cg_uniform, translated))
+               uniforms.append(translated)
 
    for index, line in enumerate(source):
       if 'void main()' in line:
          for attrib in attribs:
             if attrib == 'VertexCoord':
-               source.insert(index, 'attribute vec4 ' + attrib + ';')
+               source.insert(index, 'COMPAT_ATTRIBUTE vec4 ' + attrib + ';')
             else:
-               source.insert(index, 'attribute vec2 ' + attrib + ';')
+               source.insert(index, 'COMPAT_ATTRIBUTE vec2 ' + attrib + ';')
          for uniform in uniforms:
-            source.insert(index, '#endif')
-            source.insert(index, 'uniform vec2 ' + uniform + ';')
-            source.insert(index, '#else')
-            source.insert(index, 'uniform mediump vec2 ' + uniform + ';')
-            source.insert(index, '#ifdef GL_ES')
+            source.insert(index, 'uniform COMPAT_PRECISION vec2 ' + uniform + ';')
          break
 
    for line in source:
@@ -358,35 +358,16 @@ def replace_varyings(source):
    return ret
 
 def hack_source_vertex(source):
-   transpose_index = 2
    ref_index = 0
    for index, line in enumerate(source):
       if 'void main()' in line:
-         source.insert(index + 2, '    mat4 MVPMatrix_ = transpose_(MVPMatrix);') # transpose() is GLSL 1.20+, doesn't exist in GLSL ES 1.0
-         source.insert(index, '#endif')
-         source.insert(index, 'uniform vec2 InputSize;')
-         source.insert(index, 'uniform vec2 TextureSize;')
-         source.insert(index, 'uniform vec2 OutputSize;')
-         source.insert(index, '#else')
-         source.insert(index, 'uniform mediump vec2 InputSize;')
-         source.insert(index, 'uniform mediump vec2 TextureSize;')
-         source.insert(index, 'uniform mediump vec2 OutputSize;')
-         source.insert(index, '#ifdef GL_ES')
+         source.insert(index, 'uniform COMPAT_PRECISION vec2 InputSize;')
+         source.insert(index, 'uniform COMPAT_PRECISION vec2 TextureSize;')
+         source.insert(index, 'uniform COMPAT_PRECISION vec2 OutputSize;')
          source.insert(index, 'uniform int FrameCount;')
          source.insert(index, 'uniform int FrameDirection;')
          source.insert(index, 'uniform mat4 MVPMatrix;')
 
-         source.insert(index, """
-mat4 transpose_(mat4 matrix)
-{
-   mat4 ret;
-   for (int i = 0; i != 4; i++)
-      for (int j = 0; j != 4; j++)
-         ret[i][j] = matrix[j][i];
-
-   return ret;
-}
-         """)
          ref_index = index
          break
 
@@ -429,10 +410,13 @@ mat4 transpose_(mat4 matrix)
 def replace_global_fragment(source):
    source = replace_global_in(source)
    replace_table = [
+         ('varying', 'COMPAT_VARYING'),
+         ('texture2D', 'COMPAT_TEXTURE'),
          ('FrameCount', 'float(FrameCount)'),
          ('FrameDirection', 'float(FrameDirection)'),
          ('input', 'input_dummy'),
          ('output', 'output_dummy'), # 'output' is reserved in GLSL.
+         ('gl_FragColor', 'FragColor'),
    ]
 
    for replacement in replace_table:
@@ -478,15 +462,9 @@ def hack_source_fragment(source):
    ref_index = 0
    for index, line in enumerate(source):
       if 'void main()' in line:
-         source.insert(index, '#endif')
-         source.insert(index, 'uniform vec2 InputSize;')
-         source.insert(index, 'uniform vec2 TextureSize;')
-         source.insert(index, 'uniform vec2 OutputSize;')
-         source.insert(index, '#else')
-         source.insert(index, 'uniform mediump vec2 InputSize;')
-         source.insert(index, 'uniform mediump vec2 TextureSize;')
-         source.insert(index, 'uniform mediump vec2 OutputSize;')
-         source.insert(index, '#ifdef GL_ES')
+         source.insert(index, 'uniform COMPAT_PRECISION vec2 InputSize;')
+         source.insert(index, 'uniform COMPAT_PRECISION vec2 TextureSize;')
+         source.insert(index, 'uniform COMPAT_PRECISION vec2 OutputSize;')
          source.insert(index, 'uniform int FrameCount;')
          source.insert(index, 'uniform int FrameDirection;')
          ref_index = index
@@ -520,24 +498,21 @@ def hack_source_fragment(source):
          translated = translate_texture_size(orig)
          if translated != orig and translated not in uniforms:
             cg_uniform = line.split(':')[2].split(' ')[1]
-            translations.append((cg_uniform, translated))
-            uniforms.append(translated)
-
+            if len(cg_uniform.strip()) > 0:
+               translations.append((cg_uniform, translated))
+               uniforms.append(translated)
 
    for sampler in added_samplers:
       source.insert(ref_index, sampler)
    for uniform in uniforms:
-      source.insert(ref_index, '#endif')
-      source.insert(ref_index, 'uniform vec2 ' + uniform + ';')
-      source.insert(ref_index, '#else')
-      source.insert(ref_index, 'uniform mediump vec2 ' + uniform + ';')
-      source.insert(ref_index, '#ifdef GL_ES')
+      source.insert(ref_index, 'uniform COMPAT_PRECISION vec2 ' + uniform + ';')
    if struct_texunit0:
       source.insert(ref_index, 'uniform sampler2D Texture;')
 
    ret = []
    for line in source:
       for translation in translations:
+         log('Translation:', translation[0], '->', translation[1])
          line = line.replace(translation[0], translation[1])
       ret.append(line)
 
@@ -545,22 +520,38 @@ def hack_source_fragment(source):
    return ret
 
 def validate_shader(source, target):
-   command = ['cgc', '-noentry', '-ogles']
-   p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-   stdout_ret, stderr_ret = p.communicate(source.encode())
-
    log('Shader:')
    log('===')
    log(source)
    log('===')
+
+   command = ['cgc', '-noentry', '-ogles']
+   p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+   stdout_ret, stderr_ret = p.communicate(source.encode())
+
    log('CGC:', stderr_ret.decode())
 
    return p.returncode == 0
 
+def preprocess_vertex(source_data):
+   input_data = source_data.split('\n')
+   ret = []
+   for line in input_data:
+      if 'uniform float4x4' in line:
+         ret.append('#pragma pack_matrix(column_major)\n')
+         ret.append(line)
+         ret.append('#pragma pack_matrix(row_major)\n')
+      else:
+         ret.append(line)
+   return '\n'.join(ret)
+
 def convert(source, dest):
-   vert_cmd = ['cgc', '-profile', 'glesv', '-entry', 'main_vertex', source]
-   p = subprocess.Popen(vert_cmd, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
-   vertex_source, stderr_ret = p.communicate()
+   vert_cmd = ['cgc', '-profile', 'glesv', '-entry', 'main_vertex']
+   with open(source, 'r') as f:
+      source_data = f.read()
+   p = subprocess.Popen(vert_cmd, stdin = subprocess.PIPE, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
+   source_data = preprocess_vertex(source_data)
+   vertex_source, stderr_ret = p.communicate(input = source_data.encode())
    log(stderr_ret.decode())
    vertex_source = vertex_source.decode()
 
@@ -601,8 +592,50 @@ def convert(source, dest):
    vertex_source   = remove_comments(vertex_source[1:])
    fragment_source = remove_comments(fragment_source[1:])
 
-   out_vertex = '\n'.join(vertex_source)
-   out_fragment = '\n'.join(['#ifdef GL_ES', 'precision mediump float;', '#endif'] + fragment_source)
+   vert_hacks = []
+   vert_hacks.append('''
+#if __VERSION__ >= 130
+#define COMPAT_VARYING out
+#define COMPAT_ATTRIBUTE in
+#define COMPAT_TEXTURE texture
+#else
+#define COMPAT_VARYING varying 
+#define COMPAT_ATTRIBUTE attribute 
+#define COMPAT_TEXTURE texture2D
+#endif
+
+#ifdef GL_ES
+#define COMPAT_PRECISION mediump
+#else
+#define COMPAT_PRECISION
+#endif''')
+
+   out_vertex = '\n'.join(vert_hacks + vertex_source)
+
+   frag_hacks = []
+   frag_hacks.append('''
+#if __VERSION__ >= 130
+#define COMPAT_VARYING in
+#define COMPAT_TEXTURE texture
+out vec4 FragColor;
+#else
+#define COMPAT_VARYING varying
+#define FragColor gl_FragColor
+#define COMPAT_TEXTURE texture2D
+#endif
+
+#ifdef GL_ES
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+#define COMPAT_PRECISION mediump
+#else
+#define COMPAT_PRECISION
+#endif''')
+
+   out_fragment = '\n'.join(frag_hacks + fragment_source)
 
    if not validate_shader(out_vertex, 'glesv'):
       log('Vertex shader does not compile ...')

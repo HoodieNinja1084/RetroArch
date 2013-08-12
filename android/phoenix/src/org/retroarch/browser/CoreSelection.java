@@ -5,13 +5,10 @@ import org.retroarch.R;
 import java.io.*;
 
 import android.content.*;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.AssetManager;
 import android.annotation.TargetApi;
 import android.app.*;
 import android.media.AudioManager;
 import android.media.AudioTrack;
-import android.net.Uri;
 import android.os.*;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -20,51 +17,15 @@ import android.util.Log;
 import android.view.*;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.inputmethod.*;
-import android.graphics.drawable.*;
 
 // JELLY_BEAN_MR1 = 17
 
-class ModuleWrapper implements IconAdapterItem {
-	public final File file;
-	private ConfigFile config;
-
-	public ModuleWrapper(Context aContext, File aFile, ConfigFile config) throws IOException {
-		file = aFile;
-		this.config = config;
-	}
-
-	@Override
-	public boolean isEnabled() {
-		return true;
-	}
-
-	@Override
-	public String getText() {
-		String stripped = file.getName().replace(".so", "");
-		if (config.keyExists(stripped)) {
-			return config.getString(stripped);
-		} else
-			return stripped;
-	}
-
-	@Override
-	public int getIconResourceId() {
-		return 0;
-	}
-
-	@Override
-	public Drawable getIconDrawable() {
-		return null;
-	}
-}
-
-public class RetroArch extends Activity implements
+public class CoreSelection extends Activity implements
 		AdapterView.OnItemClickListener {
 	private IconAdapter<ModuleWrapper> adapter;
 	static private final int ACTIVITY_LOAD_ROM = 0;
 	static private String libretro_path;
-	static private Double report_refreshrate;
-	static private final String TAG = "RetroArch-Phoenix";
+	static private final String TAG = "CoreSelection";
 	private ConfigFile config;
 	private ConfigFile core_config;
 	
@@ -122,91 +83,7 @@ public class RetroArch extends Activity implements
 		return info.contains("neon");
 	}
 
-	private byte[] loadAsset(String asset) throws IOException {
-		String path = asset;
-		InputStream stream = getAssets().open(path);
-		int len = stream.available();
-		byte[] buf = new byte[len];
-		stream.read(buf, 0, len);
-		return buf;
-	}
-	
-	private void extractAssets(AssetManager manager, String cacheDir, String relativePath, int level) throws IOException {
-		final String[] paths = manager.list(relativePath);
-		if (paths != null && paths.length > 0) { // Directory
-			//Log.d(TAG, "Extracting assets directory: " + relativePath);
-			for (final String path : paths)
-				extractAssets(manager, cacheDir, relativePath + (level > 0 ? File.separator : "") + path, level + 1);	
-		} else { // File, extract.
-			//Log.d(TAG, "Extracting assets file: " + relativePath);
-			
-			String parentPath = new File(relativePath).getParent();
-			if (parentPath != null) {
-				File parentFile = new File(cacheDir, parentPath);
-				parentFile.mkdirs(); // Doesn't throw.
-			}
-			
-			byte[] asset = loadAsset(relativePath);
-			BufferedOutputStream writer = new BufferedOutputStream(
-					new FileOutputStream(new File(cacheDir, relativePath)));
 
-			writer.write(asset, 0, asset.length);
-			writer.flush();
-			writer.close();
-		}
-	}
-	
-	private void extractAssets() {
-		int version = 0;
-		try {
-			version = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-		} catch(NameNotFoundException e) {
-			// weird exception, shouldn't happen
-		}
-		
-		try {
-			AssetManager assets = getAssets();
-			String cacheDir = getCacheDir().getAbsolutePath();
-			File cacheVersion = new File(cacheDir, ".cacheversion");
-			if (cacheVersion != null && cacheVersion.isFile() && cacheVersion.canRead() && cacheVersion.canWrite())
-			{
-				DataInputStream cacheStream = new DataInputStream(new FileInputStream(cacheVersion));
-
-				int currentCacheVersion = 0;
-				try {
-					currentCacheVersion = cacheStream.readInt();
-				} catch (IOException e) {}
-			    cacheStream.close();
-			    
-				if (currentCacheVersion == version)
-				{
-					Log.i("ASSETS", "Assets already extracted, skipping...");
-					return;
-				}
-			}
-			
-			//extractAssets(assets, cacheDir, "", 0);
-			Log.i("ASSETS", "Extracting shader assets now ...");
-			try {
-				extractAssets(assets, cacheDir, "Shaders", 1);
-			} catch (IOException e) {
-				Log.i("ASSETS", "Failed to extract shaders ...");
-			}
-			
-			Log.i("ASSETS", "Extracting overlay assets now ...");
-			try {
-				extractAssets(assets, cacheDir, "Overlays", 1);
-			} catch (IOException e) {
-				Log.i("ASSETS", "Failed to extract overlays ...");
-			}
-			
-			DataOutputStream outputCacheVersion = new DataOutputStream(new FileOutputStream(cacheVersion, false));
-			outputCacheVersion.writeInt(version);
-			outputCacheVersion.close();
-		} catch (IOException e) {
-			Log.e(TAG, "Failed to extract assets to cache.");			
-		}
-	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -227,16 +104,6 @@ public class RetroArch extends Activity implements
 		
 		String cpuInfo = readCPUInfo();
 		boolean cpuIsNeon = cpuInfoIsNeon(cpuInfo);
-		report_refreshrate = getDisplayRefreshRate();
-		
-		// Extracting assets appears to take considerable amount of time, so
-		// move extraction to a thread.
-		Thread assetThread = new Thread(new Runnable() {
-			public void run() {
-				extractAssets();
-			}
-		});
-		assetThread.start();
 		
 		setContentView(R.layout.line_list);
 
@@ -291,29 +158,6 @@ public class RetroArch extends Activity implements
 			this.registerForContextMenu(findViewById(android.R.id.content));
 		}
 	}
-	
-	@Override
-	protected void onStart() {
-		super.onStart();
-		
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-		
-		if (!prefs.getBoolean("first_time_refreshrate_calculate", false)) {
-			prefs.edit().putBoolean("first_time_refreshrate_calculate", true).commit();
-			AlertDialog.Builder alert = new AlertDialog.Builder(this)
-				.setTitle("Calculate Refresh Rate")
-				.setMessage("It is highly recommended you run the refresh rate calibration test before you use RetroArch. Do you want to run it now?\n\nIf you choose No, you can run it at any time in the video preferences.\n\nIf you get performance problems even after calibration, please try threaded video driver in video preferences.")
-				.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						Intent i = new Intent(getBaseContext(), DisplayRefreshRateTest.class);
-						startActivity(i);
-					}
-				})
-				.setNegativeButton("No", null);
-			alert.show();
-		}
-	}
 
 	@Override
 	public void onItemClick(AdapterView<?> aListView, View aView,
@@ -348,8 +192,8 @@ public class RetroArch extends Activity implements
 			return internal + File.separator + "retroarch.cfg";
 		else if (external != null && new File(internal + File.separator + "retroarch.cfg").canWrite())
 			return external + File.separator + "retroarch.cfg";
-		else if (getCacheDir() != null && getCacheDir().getAbsolutePath() != null)
-			return getCacheDir().getAbsolutePath() + File.separator + "retroarch.cfg";
+		else if ((getApplicationInfo().dataDir) != null)
+			return (getApplicationInfo().dataDir) + File.separator + "retroarch.cfg";
 		else // emergency fallback, all else failed
 			return "/mnt/sd/retroarch.cfg";
 	}
@@ -391,7 +235,7 @@ public class RetroArch extends Activity implements
 		config.setInt("input_autodetect_icade_profile_pad4", Integer.valueOf(prefs.getString("input_autodetect_icade_profile_pad4", "0")));
 		
 		config.setDouble("video_refresh_rate", getRefreshRate());
-		config.setBoolean("video_threaded", prefs.getBoolean("video_threaded", false));
+		config.setBoolean("video_threaded", prefs.getBoolean("video_threaded", true));
 		
 		String aspect = prefs.getString("video_aspect_ratio", "auto");
 		if (aspect.equals("full")) {
@@ -420,7 +264,7 @@ public class RetroArch extends Activity implements
 
 		boolean useOverlay = prefs.getBoolean("input_overlay_enable", true);
 		if (useOverlay) {
-			String overlayPath = prefs.getString("input_overlay", getCacheDir() + "/Overlays/snes-landscape.cfg");
+			String overlayPath = prefs.getString("input_overlay", (getApplicationInfo().dataDir) + "/overlays/snes-landscape.cfg");
 			config.setString("input_overlay", overlayPath);
 			config.setDouble("input_overlay_opacity", prefs.getFloat("input_overlay_opacity", 1.0f));
 		} else {
@@ -533,143 +377,8 @@ public class RetroArch extends Activity implements
 			InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 			imm.showInputMethodPicker();
 			return true;
-			
-		case R.id.rarch_settings:		
-			Intent rset = new Intent(this, SettingsActivity.class);
-			startActivity(rset);
-			return true;
-		case R.id.help:		
-			Intent help = new Intent(this, HelpActivity.class);
-			startActivity(help);
-			return true;
-			
-		case R.id.report_ime:
-			String current_ime = Settings.Secure.getString(getContentResolver(), Settings.Secure.DEFAULT_INPUT_METHOD);
-			new AlertDialog.Builder(this).setMessage(current_ime).setNeutralButton("Close", null).show();
-			return true;
-		case R.id.report_refreshrate:
-			String current_rate = "Screen Refresh Rate: " + Double.valueOf(report_refreshrate).toString();
-			new AlertDialog.Builder(this).setMessage(current_rate).setNeutralButton("Close", null).show();
-			return true;
-
-		case R.id.retroarch_guide:
-			Intent rguide = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.libretro.org/documents/retroarch-manual.pdf"));
-			startActivity(rguide);
-			return true;
-
-		case R.id.cores_guide:
-			Intent cguide = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.libretro.org/documents/retroarch-cores-manual.pdf"));
-			startActivity(cguide);
-			return true;
-			
-		case R.id.overlay_guide:
-			Intent mguide = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.libretro.org/documents/overlay.pdf"));
-			startActivity(mguide);
-			return true;
 		default:
 			return false;
-		}
-	}
-}
-
-abstract class LazyPopupMenu {
-	public abstract Menu getMenu();
-	public abstract MenuInflater getMenuInflater();
-	public abstract void setOnMenuItemClickListener(LazyPopupMenu.OnMenuItemClickListener listener);
-	public abstract void show();
-	public interface OnMenuItemClickListener {
-		public abstract boolean onMenuItemClick(MenuItem item);
-	}
-}
-
-@TargetApi(Build.VERSION_CODES.HONEYCOMB)
-class HoneycombPopupMenu extends LazyPopupMenu {
-	private PopupMenu instance;
-	HoneycombPopupMenu.OnMenuItemClickListener listen;
-	
-	public HoneycombPopupMenu(Context context, View anchor)
-	{
-		instance = new PopupMenu(context, anchor);
-	}
-
-	@Override
-	public void setOnMenuItemClickListener(HoneycombPopupMenu.OnMenuItemClickListener listener)
-	{
-		listen = listener;
-		instance.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-			@Override
-			public boolean onMenuItemClick(MenuItem item) {
-				return listen.onMenuItemClick(item);
-			}
-			
-		});
-	}
-
-	@Override
-	public Menu getMenu() {
-		return instance.getMenu();
-	}
-
-	@Override
-	public MenuInflater getMenuInflater() {
-		return instance.getMenuInflater();
-	}
-
-	@Override
-	public void show() {
-		instance.show();
-	}
-}
-
-class PopupMenuAbstract extends LazyPopupMenu
-{
-	private LazyPopupMenu lazy;
-	
-	public PopupMenuAbstract(Context context, View anchor)
-	{
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-		{
-			lazy = new HoneycombPopupMenu(context, anchor);
-		}
-	}
-
-	@Override
-	public Menu getMenu() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-		{
-			return lazy.getMenu();
-		}
-		else
-		{
-			return null;
-		}
-	}
-
-	@Override
-	public MenuInflater getMenuInflater() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-		{
-			return lazy.getMenuInflater();
-		}
-		else
-		{
-			return null;
-		}
-	}
-
-	@Override
-	public void setOnMenuItemClickListener(PopupMenuAbstract.OnMenuItemClickListener listener) {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-		{
-			lazy.setOnMenuItemClickListener(listener);
-		}
-	}
-
-	@Override
-	public void show() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB)
-		{
-			lazy.show();
 		}
 	}
 }

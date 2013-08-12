@@ -51,6 +51,24 @@ if [ "$HAVE_FLOATSOFTFP" = "yes" ]; then
    ASFLAGS="$ASFLAGS -mfloat-abi=softfp"
 fi
 
+if [ "$HAVE_NEON" = "yes" ]; then
+   CFLAGS="$CFLAGS -mfpu=neon -marm"
+   CXXFLAGS="$CXXFLAGS -mfpu=neon -marm"
+   ASFLAGS="$ASFLAGS -mfpu=neon"
+fi
+
+if [ "$HAVE_FLOATHARD" = "yes" ]; then
+   CFLAGS="$CFLAGS -mfloat-abi=hard"
+   CXXFLAGS="$CXXFLAGS -mfloat-abi=hard"
+   ASFLAGS="$ASFLAGS -mfloat-abi=hard"
+fi
+
+if [ "$HAVE_FLOATSOFTFP" = "yes" ]; then
+   CFLAGS="$CFLAGS -mfloat-abi=softfp"
+   CXXFLAGS="$CXXFLAGS -mfloat-abi=softfp"
+   ASFLAGS="$ASFLAGS -mfloat-abi=softfp"
+fi
+
 if [ "$HAVE_SSE" = "yes" ]; then
    CFLAGS="$CFLAGS -msse -msse2"
    CXXFLAGS="$CXXFLAGS -msse -msse2"

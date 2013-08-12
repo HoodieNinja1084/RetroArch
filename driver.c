@@ -123,6 +123,9 @@ static const video_driver_t *video_drivers[] = {
 #ifdef HAVE_NULLVIDEO
    &video_null,
 #endif
+#ifdef HAVE_OMAP
+   &video_omap,
+#endif
 };
 
 static const input_driver_t *input_drivers[] = {
@@ -577,7 +580,7 @@ void init_audio(void)
 
    g_extern.measure_data.buffer_free_samples_count = 0;
 
-   if (g_extern.audio_active && g_extern.system.audio_callback) // Threaded driver is initially stopped.
+   if (g_extern.audio_active && !g_extern.audio_data.mute && g_extern.system.audio_callback) // Threaded driver is initially stopped.
       audio_start_func();
 }
 
@@ -628,10 +631,7 @@ static void compute_audio_buffer_statistics(void)
 bool driver_monitor_fps_statistics(double *refresh_rate, double *deviation, unsigned *sample_points)
 {
    if (g_settings.video.threaded)
-   {
-      RARCH_LOG("Monitor FPS estimation is disabled for threaded video.\n");
       return false;
-   }
 
    unsigned samples = min(MEASURE_FRAME_TIME_SAMPLES_COUNT, g_extern.measure_data.frame_time_samples_count);
    if (samples < 2)
@@ -667,6 +667,12 @@ bool driver_monitor_fps_statistics(double *refresh_rate, double *deviation, unsi
 
 static void compute_monitor_fps_statistics(void)
 {
+   if (g_settings.video.threaded)
+   {
+      RARCH_LOG("Monitor FPS estimation is disabled for threaded video.\n");
+      return;
+   }
+
    if (g_extern.measure_data.frame_time_samples_count < 2 * MEASURE_FRAME_TIME_SAMPLES_COUNT)
    {
       RARCH_LOG("Does not have enough samples for monitor refresh rate estimation. Requires to run for at least %u frames.\n",

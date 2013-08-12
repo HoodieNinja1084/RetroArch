@@ -85,8 +85,6 @@ static const GLfloat white_color[] = {
    1, 1, 1, 1,
 };
 
-// Workaround broken Apple headers.
-typedef const GLubyte* (*gl_get_stringi_proc)(GLenum name, GLuint index);
 static inline bool gl_query_extension(gl_t *gl, const char *ext)
 {
    bool ret = false;
@@ -247,12 +245,14 @@ static bool gl_shader_init(void *data)
       return true;
    }
 
+#ifdef HAVE_GLSL
    if (gl->core_context && RARCH_SHADER_CG)
    {
       RARCH_ERR("[GL]: Cg cannot be used with core GL context. Falling back to GLSL.\n");
       backend = &gl_glsl_backend;
       shader_path = NULL;
    }
+#endif
 
    gl->shader = backend;
    bool ret = gl->shader->init(shader_path);
@@ -1864,11 +1864,13 @@ static void *gl_init(const video_info_t *video, const input_driver_t **input, vo
       return NULL;
    }
 
-   rglgen_resolve_symbols(gl->ctx_driver->get_proc_address);
-
    const char *vendor = (const char*)glGetString(GL_VENDOR);
    const char *renderer = (const char*)glGetString(GL_RENDERER);
    RARCH_LOG("[GL]: Vendor: %s, Renderer: %s.\n", vendor, renderer);
+
+#ifndef RARCH_CONSOLE
+   rglgen_resolve_symbols(gl->ctx_driver->get_proc_address);
+#endif
 
    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 

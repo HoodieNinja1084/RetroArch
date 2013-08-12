@@ -109,7 +109,6 @@ enum menu_enums
 {
    MODE_GAME = 0,
    MODE_LOAD_GAME,
-   MODE_INIT,
    MODE_MENU,
    MODE_MENU_WIDESCREEN,
    MODE_MENU_HD,
@@ -118,7 +117,6 @@ enum menu_enums
    MODE_INFO_DRAW,
    MODE_FPS_DRAW,
    MODE_EXTLAUNCH_MULTIMAN,
-   MODE_EXIT,
    MODE_EXITSPAWN,
    MODE_EXITSPAWN_START_GAME,
    MODE_EXITSPAWN_MULTIMAN,
@@ -128,9 +126,7 @@ enum menu_enums
    MODE_VIDEO_SOFT_FILTER_ENABLE,
    MODE_VIDEO_PAL_ENABLE,
    MODE_VIDEO_PAL_TEMPORAL_ENABLE,
-   MODE_VIDEO_PAL_VSYNC_BLOCK,
    MODE_AUDIO_CUSTOM_BGM_ENABLE,
-   MODE_OSK_DRAW,
    MODE_OSK_ENTRY_SUCCESS,
    MODE_OSK_ENTRY_FAIL,
 };
@@ -268,6 +264,7 @@ struct settings
    unsigned rewind_granularity;
 
    float slowmotion_ratio;
+   float fastforward_ratio;
 
    bool pause_nonactive;
    unsigned autosave_interval;
@@ -370,6 +367,12 @@ struct global
    char ips_name[PATH_MAX];
 
    unsigned state_slot;
+
+   struct
+   {
+      rarch_time_t minimum_frame_time;
+      rarch_time_t last_frame_time;
+   } frame_limit;
 
    struct
    {
