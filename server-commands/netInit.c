@@ -23,6 +23,8 @@ void init_server(network_t* netInfo)
   netInfo->serverUDP.sin_family = AF_INET;
 
   netInfo->nbClients = 0;
+
+  printf("Server is listenning on TCP port %d and UDP port %d\n", htons(netInfo->serverTCP.sin_port), htons(netInfo->serverUDP.sin_port));
 }
 
 client_t* new_client(network_t* netInfo)
@@ -34,8 +36,11 @@ client_t* new_client(network_t* netInfo)
 
   // setup new client
   client_t* client = malloc(sizeof(*client));
-  client->socket = csock; 
+  client->socket = csock;
+  client->type = 0; 
   strcpy(client->name, "undefined");
+
+  printf("New client connected.\n");
 
   return (client);  
 }

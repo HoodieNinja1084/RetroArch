@@ -9,7 +9,6 @@ void launch_server(void)
   network_t netInfo;
 
   init_server(&netInfo);
-  printf("Server is listenning on TCP port %d and UDP port %d\n", htons(netInfo.serverTCP.sin_port), htons(netInfo.serverUDP.sin_port));
 
   uint8_t max = netInfo.sSocketUDP;
   uint8_t actual = 0;
@@ -29,15 +28,13 @@ void launch_server(void)
 	}
 
       struct timeval timeout = {3, 0};
-      select(max + 1, &readfs, NULL, NULL, &timeout);
+      xselect(max + 1, &readfs, NULL, NULL, &timeout);
 
       if (FD_ISSET(netInfo.sSocketTCP, &readfs))
 	{
 	  // new client
 	  netInfo.clients[actual] = new_client(&netInfo);
 	  netInfo.nbClients++;
-
-	  printf("New client connected.\n");
 
 	  uint32_t csock = netInfo.clients[actual]->socket;
 	  FD_SET(csock, &readfs);

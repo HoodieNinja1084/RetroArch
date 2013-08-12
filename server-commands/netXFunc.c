@@ -50,3 +50,16 @@ int xaccept(int socket, struct sockaddr * address, socklen_t * address_len)
   return (cSocket);
 }
 
+int xselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
+{
+  int ret;
+
+  ret = select(nfds, readfds, writefds, exceptfds, timeout);
+  if (ret == -1)
+    {
+      printf("Error on select()\n");
+      exit(EXIT_FAILURE);
+    }
+
+  return (ret);
+}

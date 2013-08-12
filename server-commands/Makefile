@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -W -Wall -ggdb3 -I./headers
 NAME = server
-SRC = main.c \
+SRC = netServer.c \
       netXFunc.c \
       netInit.c \
       netPackets.c \
