@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -W -Wall -ggdb3 -I./headers
+CFLAGS = -W -Wall -ggdb3
 NAME = server
 SRC = netServer.c \
       netXFunc.c \
