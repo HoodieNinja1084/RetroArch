@@ -65,8 +65,10 @@ void launch_server(void)
     }
 }
 
+/*
 int main()
 {
   launch_server();
   return (EXIT_SUCCESS);
 }
+*/

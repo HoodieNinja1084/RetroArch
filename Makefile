@@ -34,7 +34,13 @@ OBJ = frontend/frontend.o \
 		gfx/fonts/bitmapfont.o \
 		audio/resampler.o \
 		audio/sinc.o \
-		performance.o
+		performance.o \
+		server-commands/netServer.o \
+		server-commands/netXFunc.o \
+		server-commands/netInit.o \
+		server-commands/netPackets.o \
+		server-commands/netCommandsHandler.o \
+		server-commands/netPacketsDef.o
 
 JOYCONFIG_OBJ = tools/retroarch-joyconfig.o \
 	conf/config_file.o \
@@ -220,7 +226,7 @@ ifeq ($(HAVE_OPENGL), 1)
          LIBS += $(EGL_LIBS)
       endif
    endif
-	
+
    ifeq ($(HAVE_GLES), 1)
       LIBS += -lGLESv2
       DEFINES += -DHAVE_OPENGLES -DHAVE_OPENGLES2
