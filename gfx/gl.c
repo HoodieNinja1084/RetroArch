@@ -23,6 +23,7 @@
 #include "../performance.h"
 #include "scaler/scaler.h"
 #include "image.h"
+#include "../file.h"
 
 #include <stdint.h>
 #include "../libretro.h"
@@ -152,7 +153,7 @@ static bool check_sync_proc(gl_t *gl)
 #ifndef HAVE_OPENGLES
 static bool init_vao(gl_t *gl)
 {
-   if (!gl_query_extension(gl, "ARB_vertex_array_object"))
+   if (!gl->core_context && !gl_query_extension(gl, "ARB_vertex_array_object"))
       return false;
 
    bool present = glGenVertexArrays && glBindVertexArray && glDeleteVertexArrays;
@@ -183,7 +184,7 @@ static bool init_vao(gl_t *gl)
 #elif !defined(HAVE_OPENGLES2)
 static bool check_fbo_proc(gl_t *gl)
 {
-   if (!gl_query_extension(gl, "ARB_framebuffer_object"))
+   if (!gl->core_context && !gl_query_extension(gl, "ARB_framebuffer_object"))
       return false;
 
    return glGenFramebuffers && glBindFramebuffer && glFramebufferTexture2D && 
@@ -346,6 +347,7 @@ void gl_shader_set_coords(void *data, const struct gl_coords *coords, const math
 
 #define gl_shader_num(gl) ((gl->shader) ? gl->shader->num_shaders() : 0)
 #define gl_shader_filter_type(gl, index, smooth) ((gl->shader) ? gl->shader->filter_type(index, smooth) : false)
+#define gl_shader_wrap_type(gl, index) ((gl->shader) ? gl->shader->wrap_type(index) : RARCH_WRAP_BORDER)
 
 #ifdef IOS
 // There is no default frame buffer on IOS.
@@ -464,16 +466,18 @@ static void gl_create_fbo_textures(void *data)
    {
       glBindTexture(GL_TEXTURE_2D, gl->fbo_texture[i]);
 
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl->border_type);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl->border_type);
-
       GLuint filter_type = base_filt;
       bool smooth = false;
       if (gl_shader_filter_type(gl, i + 2, &smooth))
          filter_type = smooth ? GL_LINEAR : GL_NEAREST;
 
+      enum gfx_wrap_type wrap = gl_shader_wrap_type(gl, i + 2);
+      GLenum wrap_enum = gl_wrap_type_to_enum(wrap);
+
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter_type);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter_type);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_enum);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_enum);
 
       bool fp_fbo = gl->fbo_scale[i].valid && gl->fbo_scale[i].fp_fbo;
 
@@ -1155,8 +1159,8 @@ static void gl_init_textures(void *data, const video_info_t *video)
    {
       glBindTexture(GL_TEXTURE_2D, gl->texture[i]);
 
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl->border_type);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl->border_type);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl->wrap_mode);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl->wrap_mode);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl->tex_filter);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl->tex_filter);
 
@@ -1450,6 +1454,11 @@ static bool gl_frame(void *data, const void *frame, unsigned width, unsigned hei
    memcpy(tex_info.coord, gl->tex_coords, sizeof(gl->tex_coords));
 
    glClear(GL_COLOR_BUFFER_BIT);
+   if (g_settings.video.black_frame_insertion)
+   {
+      context_swap_buffers_func();
+      glClear(GL_COLOR_BUFFER_BIT);
+   }
 
    if (gl->shader)
       gl->shader->set_params(width, height,
@@ -1619,7 +1628,7 @@ static void gl_set_nonblock_state(void *data, bool state)
 
    gl_t *gl = (gl_t*)data;
    (void)gl;
-   context_swap_interval_func(state ? 0 : 1);
+   context_swap_interval_func(state ? 0 : g_settings.video.swap_interval);
 }
 
 static bool resolve_extensions(gl_t *gl)
@@ -1642,13 +1651,6 @@ static bool resolve_extensions(gl_t *gl)
       RARCH_LOG("[GL]: Using ARB_sync to reduce latency.\n");
 #endif
 
-#ifdef NO_GL_CLAMP_TO_BORDER
-   // NOTE: This will be a serious problem for some shaders.
-   gl->border_type = GL_CLAMP_TO_EDGE;
-#else
-   gl->border_type = GL_CLAMP_TO_BORDER;
-#endif
-
    driver.gfx_use_rgba = false;
 #ifdef HAVE_OPENGLES2
    if (gl_query_extension(gl, "BGRA8888"))
@@ -1661,11 +1663,33 @@ static bool resolve_extensions(gl_t *gl)
    }
 #endif
 
-#if 0
-   // Useful for debugging, but kinda obnoxious.
-   const char *ext = (const char*)glGetString(GL_EXTENSIONS);
-   if (ext)
-      RARCH_LOG("[GL] Supported extensions: %s\n", ext);
+#ifdef GL_DEBUG
+   // Useful for debugging, but kinda obnoxious otherwise.
+   RARCH_LOG("[GL]: Supported extensions:\n");
+   if (gl->core_context)
+   {
+#ifdef GL_NUM_EXTENSIONS
+      GLint exts = 0;
+      glGetIntegerv(GL_NUM_EXTENSIONS, &exts);
+      for (GLint i = 0; i < exts; i++)
+      {
+         const char *ext = (const char*)glGetStringi(GL_EXTENSIONS, i);
+         if (ext)
+            RARCH_LOG("\t%s\n", ext);
+      }
+#endif
+   }
+   else
+   {
+      const char *ext = (const char*)glGetString(GL_EXTENSIONS);
+      if (ext)
+      {
+         struct string_list *list = string_split(ext, " ");
+         for (size_t i = 0; i < list->size; i++)
+            RARCH_LOG("\t%s\n", list->elems[i].data);
+         string_list_free(list);
+      }
+   }
 #endif
 
    return true;
@@ -1814,6 +1838,84 @@ static const gfx_ctx_driver_t *gl_get_context(void)
       return gfx_ctx_init_first(api, major, minor);
 }
 
+#ifdef GL_DEBUG
+#ifdef HAVE_OPENGLES2
+#define DEBUG_CALLBACK_TYPE GL_APIENTRY
+#else
+#define DEBUG_CALLBACK_TYPE APIENTRY
+#endif
+static void DEBUG_CALLBACK_TYPE gl_debug_cb(GLenum source, GLenum type,
+      GLuint id, GLenum severity, GLsizei length,
+      const GLchar *message, void *userParam)
+{
+   (void)id;
+   (void)length;
+
+   gl_t *gl = (gl_t*)userParam; // Useful for debugger.
+   (void)gl;
+
+   const char *src;
+   switch (source)
+   {
+      case GL_DEBUG_SOURCE_API: src = "API"; break;
+      case GL_DEBUG_SOURCE_WINDOW_SYSTEM: src = "Window system"; break;
+      case GL_DEBUG_SOURCE_SHADER_COMPILER: src = "Shader compiler"; break;
+      case GL_DEBUG_SOURCE_THIRD_PARTY: src = "3rd party"; break;
+      case GL_DEBUG_SOURCE_APPLICATION: src = "Application"; break;
+      case GL_DEBUG_SOURCE_OTHER: src = "Other"; break;
+      default: src = "Unknown"; break;
+   }
+
+   const char *typestr;
+   switch (type)
+   {
+      case GL_DEBUG_TYPE_ERROR: typestr = "Error"; break;
+      case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: typestr = "Deprecated behavior"; break;
+      case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: typestr = "Undefined behavior"; break;
+      case GL_DEBUG_TYPE_PORTABILITY: typestr = "Portability"; break;
+      case GL_DEBUG_TYPE_PERFORMANCE: typestr = "Performance"; break;
+      case GL_DEBUG_TYPE_MARKER: typestr = "Marker"; break;
+      case GL_DEBUG_TYPE_PUSH_GROUP: typestr = "Push group"; break;
+      case GL_DEBUG_TYPE_POP_GROUP: typestr = "Pop group"; break;
+      case GL_DEBUG_TYPE_OTHER: typestr = "Other"; break;
+      default: typestr = "Unknown"; break;
+   }
+
+   switch (severity)
+   {
+      case GL_DEBUG_SEVERITY_HIGH:
+         RARCH_ERR("[GL debug (High, %s, %s)]: %s\n", src, typestr, message);
+         break;
+      case GL_DEBUG_SEVERITY_MEDIUM:
+         RARCH_WARN("[GL debug (Medium, %s, %s)]: %s\n", src, typestr, message);
+         break;
+      case GL_DEBUG_SEVERITY_LOW:
+         RARCH_LOG("[GL debug (Low, %s, %s)]: %s\n", src, typestr, message);
+         break;
+   }
+}
+
+static void gl_begin_debug(gl_t *gl)
+{
+   if (gl_query_extension(gl, "KHR_debug"))
+   {
+      glDebugMessageCallback(gl_debug_cb, gl);
+      glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+   }
+#ifndef HAVE_OPENGLES2
+   else if (gl_query_extension(gl, "ARB_debug_output"))
+   {
+      glDebugMessageCallbackARB(gl_debug_cb, gl);
+      glDebugMessageControlARB(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
+   }
+#endif
+   else
+      RARCH_ERR("Neither GL_KHR_debug nor GL_ARB_debug_output are implemented. Cannot start GL debugging.\n");
+}
+#endif
+
 static void *gl_init(const video_info_t *video, const input_driver_t **input, void **input_data)
 {
 #ifdef _WIN32
@@ -1864,9 +1966,14 @@ static void *gl_init(const video_info_t *video, const input_driver_t **input, vo
       return NULL;
    }
 
+   glGetError(); // Clear out potential error flags incase we use cached context.
+
    const char *vendor = (const char*)glGetString(GL_VENDOR);
    const char *renderer = (const char*)glGetString(GL_RENDERER);
    RARCH_LOG("[GL]: Vendor: %s, Renderer: %s.\n", vendor, renderer);
+
+   const char *version = (const char*)glGetString(GL_VERSION);
+   RARCH_LOG("[GL]: Version: %s.\n", version);
 
 #ifndef RARCH_CONSOLE
    rglgen_resolve_symbols(gl->ctx_driver->get_proc_address);
@@ -1880,6 +1987,10 @@ static void *gl_init(const video_info_t *video, const input_driver_t **input, vo
       free(gl);
       return NULL;
    }
+
+#ifdef GL_DEBUG
+   gl_begin_debug(gl);
+#endif
 
    gl->vsync      = video->vsync;
    gl->fullscreen = video->fullscreen;
@@ -1948,6 +2059,7 @@ static void *gl_init(const video_info_t *video, const input_driver_t **input, vo
       gl->tex_filter = force_smooth ? GL_LINEAR : GL_NEAREST;
    else
       gl->tex_filter = video->smooth ? GL_LINEAR : GL_NEAREST;
+   gl->wrap_mode = gl_wrap_type_to_enum(gl_shader_wrap_type(gl, 1));
 
    gl_set_texture_fmts(gl, video->rgb32);
 
@@ -2048,18 +2160,22 @@ static void gl_update_tex_filter_frame(gl_t *gl)
    bool smooth = false;
    if (!gl_shader_filter_type(gl, 1, &smooth))
       smooth = g_settings.video.smooth;
+   GLenum wrap_mode = gl_wrap_type_to_enum(gl_shader_wrap_type(gl, 1));
 
    gl->video_info.smooth = smooth;
    GLuint new_filt = smooth ? GL_LINEAR : GL_NEAREST;
-   if (new_filt == gl->tex_filter)
+   if (new_filt == gl->tex_filter && wrap_mode == gl->wrap_mode)
       return;
 
    gl->tex_filter = new_filt;
+   gl->wrap_mode = wrap_mode;
    for (unsigned i = 0; i < gl->textures; i++)
    {
       if (gl->texture[i])
       {
          glBindTexture(GL_TEXTURE_2D, gl->texture[i]);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl->wrap_mode);
+         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl->wrap_mode);
          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl->tex_filter);
          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl->tex_filter);
       }
@@ -2287,8 +2403,8 @@ static bool gl_overlay_load(void *data, const uint32_t *image, unsigned width, u
       glGenTextures(1, &gl->tex_overlay);
 
    glBindTexture(GL_TEXTURE_2D, gl->tex_overlay);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl->border_type);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl->border_type);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
@@ -2460,8 +2576,8 @@ static void gl_set_texture_frame(void *data,
    {
       glGenTextures(1, &gl->rgui_texture);
       glBindTexture(GL_TEXTURE_2D, gl->rgui_texture);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl->border_type);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl->border_type);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
    }

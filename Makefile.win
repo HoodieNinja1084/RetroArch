@@ -44,7 +44,8 @@ JOBJ := conf/config_file.o \
 	compat/compat.o \
 	file_path.o \
 	tools/input_common_joyconfig.o \
-	input/dinput.o
+	input/dinput.o \
+	input/winxinput_joypad.o
 
 CC = gcc
 CXX = g++
@@ -62,6 +63,9 @@ HAVE_STDIN_CMD = 1
 HAVE_THREADS = 1
 HAVE_RGUI = 1
 DYNAMIC = 1
+HAVE_WIN32GUI = 1
+
+HAVE_WINXINPUT = 1
 
 ifeq ($(SLIM),)
    HAVE_SDL = 1
@@ -98,6 +102,10 @@ JLIBS =
 ifeq ($(HAVE_RGUI), 1)
    DEFINES += -DHAVE_RGUI
    OBJ += frontend/menu/menu_common.o frontend/menu/rgui.o frontend/menu/history.o
+endif
+
+ifeq ($(HAVE_WIN32GUI), 1)
+   DEFINES += -DHAVE_WIN32GUI
 endif
 
 ifeq ($(HAVE_SDL), 1)
@@ -212,6 +220,11 @@ ifeq ($(HAVE_PYTHON), 1)
    OBJ += gfx/py_state/py_state.o
 endif
 
+ifeq ($(HAVE_WINXINPUT), 1)
+   DEFINES += -DHAVE_WINXINPUT
+   OBJ += input/winxinput_joypad.o
+endif
+
 ifeq ($(HAVE_DINPUT), 1)
    LIBS += -ldinput8 -ldxguid -lole32
    DEFINES += -DHAVE_DINPUT
@@ -235,6 +248,11 @@ else
    CFLAGS += -O3 -ffast-math
    CXXFLAGS += -O3 -ffast-math
    LDCXXFLAGS += -s
+endif
+
+ifeq ($(GL_DEBUG), 1)
+   CFLAGS += -DGL_DEBUG
+   CXXFLAGS += -DGL_DEBUG
 endif
 
 CFLAGS += -Wall -Wno-unused-result -Wno-unused-variable -I.

@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    android:title="RetroArch 0.9.9.5 - Main Menu" >
+    android:title="RetroArch - Main Menu" >
 
-    <PreferenceScreen android:title="Select Game">
+    <PreferenceScreen android:title="TV Mode">
+       <intent
+          android:targetClass="org.retroarch.browser.RetroTVMode"
+          android:targetPackage="org.retroarch" />
+    </PreferenceScreen>
+    <PreferenceScreen android:title="Load Core">
        <intent
           android:targetClass="org.retroarch.browser.CoreSelection"
+          android:targetPackage="org.retroarch" />
+    </PreferenceScreen>
+    <PreferenceScreen android:title="Load Game">
+       <intent
+          android:targetClass="org.retroarch.browser.ROMActivity"
+          android:targetPackage="org.retroarch" />
+    </PreferenceScreen>
+    <PreferenceScreen android:title="Load Game (History)">
+       <intent
+          android:targetClass="org.retroarch.browser.HistorySelection"
           android:targetPackage="org.retroarch" />
     </PreferenceScreen>
     <PreferenceScreen android:title="Video Options" >
@@ -98,6 +113,12 @@
                 android:summary="Enable dynamic rate control (recommended)."
                 android:title="Dynamic Rate Control"
                 android:dependency="audio_enable" />
+            <CheckBoxPreference 
+                android:defaultValue="false"
+                android:key="audio_high_latency"
+                android:summary="Use (very) high latency audio. Necessary for older Android devices with poor audio drivers."
+                android:title="High latency audio"
+                android:dependency="audio_enable" />
         </PreferenceCategory>
     </PreferenceScreen>
     <PreferenceScreen android:title="Input Options" >
@@ -109,6 +130,17 @@
                 android:summary="Select how you want the Back button to behave."
                 android:title="Back behavior" />
        </PreferenceCategory>
+       
+       <PreferenceCategory android:title="IME" >
+            <Preference
+                android:summary="Sets IME to be used in-game."
+                android:title="Set Input Method" >
+                <intent
+                    android:targetClass="org.retroarch.browser.IMEActivity"
+                    android:targetPackage="org.retroarch" />
+            </Preference>
+        </PreferenceCategory>
+
         <PreferenceCategory android:title="Configuration Autodetect" >
             <CheckBoxPreference
                 android:defaultValue="true"
@@ -443,6 +475,14 @@
         </PreferenceCategory>
     </PreferenceScreen>
     <PreferenceScreen android:title="Settings" >
+        <PreferenceCategory android:title="Configuration style" >
+            <CheckBoxPreference
+                android:defaultValue="true"
+                android:key="global_config_enable"
+                android:summary="Enable global settings for all cores. Leave disabled if you want per-core settings."
+                android:title="Enable global configuration" />
+        </PreferenceCategory>
+
         <PreferenceCategory android:title="General" >
             <CheckBoxPreference
                 android:defaultValue="true"

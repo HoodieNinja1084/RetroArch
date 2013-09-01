@@ -19,6 +19,7 @@
 // NOTE: I pieced this together through trial and error, any corrections are welcome
 
 static IOHIDManagerRef g_hid_manager;
+static uint32_t g_num_pads;
 
 static void hid_input_callback(void* inContext, IOReturn inResult, void* inSender, IOHIDValueRef inIOHIDValueRef)
 {
@@ -62,7 +63,7 @@ static void hid_input_callback(void* inContext, IOReturn inResult, void* inSende
          if (state)  g_current_input_data.pad_buttons[slot] |= (1 << (use - 1));
          else        g_current_input_data.pad_buttons[slot] &= ~(1 << (use - 1));
       }
-      else if (type == kIOHIDElementTypeInput_Axis && page == kHIDPage_GenericDesktop)
+      else if (type == kIOHIDElementTypeInput_Misc && page == kHIDPage_GenericDesktop)
       {
          static const uint32_t axis_use_ids[4] = { 48, 49, 50, 53 };
          for (int i = 0; i < 4; i ++)
@@ -83,9 +84,18 @@ static void hid_input_callback(void* inContext, IOReturn inResult, void* inSende
 
 static void hid_device_attached(void* inContext, IOReturn inResult, void* inSender, IOHIDDeviceRef inDevice)
 {
+   void* context = 0;
+
+   if (IOHIDDeviceConformsTo(inDevice, kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick))
+   {
+      if (g_num_pads > 4)
+         return;
+      context = (void*)(g_num_pads++);
+   }
+
    IOHIDDeviceOpen(inDevice, kIOHIDOptionsTypeNone);
-   IOHIDDeviceScheduleWithRunLoop(inDevice, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-   IOHIDDeviceRegisterInputValueCallback(inDevice, hid_input_callback, 0);
+   IOHIDDeviceScheduleWithRunLoop(inDevice, CFRunLoopGetCurrent(), kCFRunLoopCommonModes);
+   IOHIDDeviceRegisterInputValueCallback(inDevice, hid_input_callback, context);
 }
 
 static void hid_device_removed(void* inContext, IOReturn inResult, void* inSender, IOHIDDeviceRef inDevice)
@@ -129,7 +139,7 @@ void osx_pad_init()
 
       IOHIDManagerRegisterDeviceMatchingCallback(g_hid_manager, hid_device_attached, 0);
       IOHIDManagerRegisterDeviceRemovalCallback(g_hid_manager, hid_device_removed, 0);
-      IOHIDManagerScheduleWithRunLoop(g_hid_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+      IOHIDManagerScheduleWithRunLoop(g_hid_manager, CFRunLoopGetMain(), kCFRunLoopCommonModes);
 
       IOHIDManagerOpen(g_hid_manager, kIOHIDOptionsTypeNone);
    }
@@ -140,7 +150,7 @@ void osx_pad_quit()
    if (g_hid_manager)
    {
       IOHIDManagerClose(g_hid_manager, kIOHIDOptionsTypeNone);
-      IOHIDManagerUnscheduleFromRunLoop(g_hid_manager, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+      IOHIDManagerUnscheduleFromRunLoop(g_hid_manager, CFRunLoopGetCurrent(), kCFRunLoopCommonModes);
       
       CFRelease(g_hid_manager);
    }
