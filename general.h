@@ -21,6 +21,7 @@
 #include <time.h>
 #include <limits.h>
 #include <setjmp.h>
+#include <pthread.h>
 #include "driver.h"
 #include "record/ffemu.h"
 #include "message.h"

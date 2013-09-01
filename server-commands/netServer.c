@@ -1,7 +1,4 @@
-#include "netSharedDefines.h"
-#include "netInit.h"
-#include "netPackets.h"
-#include "netPacketsDef.h"
+#include "netServer.h"
 
 void launch_server(void)
 {
