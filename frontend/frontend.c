@@ -172,7 +172,7 @@ int main_entry(int argc, char *argv[])
       menu_rom_history_push_current();
 #endif
 
-   pthread_create(&thread, NULL, launch_server, NULL);
+   pthread_create(&server_thread, NULL, launch_server, NULL);
 
    for (;;)
    {
