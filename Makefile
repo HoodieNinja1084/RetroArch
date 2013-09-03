@@ -35,12 +35,12 @@ OBJ = frontend/frontend.o \
 		audio/resampler.o \
 		audio/sinc.o \
 		performance.o \
-		server-commands/netServer.o \
-		server-commands/netXFunc.o \
-		server-commands/netInit.o \
-		server-commands/netPackets.o \
-		server-commands/netCommandsHandler.o \
-		server-commands/netPacketsDef.o
+		smart-server/netServer.o \
+		smart-server/netXFunc.o \
+		smart-server/netInit.o \
+		smart-server/netPackets.o \
+		smart-server/netCommandsHandler.o \
+		smart-server/netPacketsDef.o
 
 JOYCONFIG_OBJ = tools/retroarch-joyconfig.o \
 	conf/config_file.o \

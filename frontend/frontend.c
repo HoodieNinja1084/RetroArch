@@ -30,8 +30,6 @@ frontend_ctx_driver_t *frontend_ctx;
 
 #include "../file_ext.h"
 
-#include "server-commands/netServer.h"
-
 #ifdef RARCH_CONSOLE
 #include "../config.def.h"
 

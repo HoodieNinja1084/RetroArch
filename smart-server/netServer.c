@@ -1,9 +1,8 @@
 #include "netServer.h"
 
-void launch_smartserver(void)
+void *launch_smartserver(void* args)
 {
    fd_set readfs;
-   network_t netInfo;
 
    init_server(&netInfo);
 
@@ -60,4 +59,6 @@ void launch_smartserver(void)
          }
       }
    }
+
+   return (NULL);
 }

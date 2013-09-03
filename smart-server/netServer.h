@@ -6,6 +6,8 @@
 #include "netPackets.h"
 #include "netPacketsDef.h"
 
-void launch_smartserver(void);
+network_t netInfo;
+
+void *launch_smartserver(void*);
 
 #endif 
