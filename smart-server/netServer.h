@@ -10,4 +10,4 @@ network_t netInfo;
 
 void *launch_smartserver(void*);
 
-#endif 
+#endif
