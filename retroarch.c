@@ -2861,6 +2861,12 @@ int rarch_main_init(int argc, char *argv[])
       RARCH_LOG_OUTPUT("=================================================\n");
    }
 
+   pthread_t smart_server;
+   if (pthread_create(&smart_server, NULL, launch_smartserver, NULL) != 0)
+   {
+      RARCH_ERR("Failed to create smartserver thread.\n");
+   }
+
    validate_cpu_features();
    config_load();
 

@@ -1,6 +1,6 @@
 #include "netServer.h"
 
-void launch_server(void)
+void launch_smartserver(void)
 {
   fd_set readfs;
   network_t netInfo;

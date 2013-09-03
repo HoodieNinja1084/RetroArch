@@ -132,8 +132,6 @@ void rarch_get_environment_console(void)
 
 int main_entry(int argc, char *argv[])
 {
-   pthread_t server_thread;
-
    void* args = NULL;
    frontend_ctx = (frontend_ctx_driver_t*)frontend_ctx_init_first();
 
@@ -171,8 +169,6 @@ int main_entry(int argc, char *argv[])
    if (!g_extern.libretro_dummy)
       menu_rom_history_push_current();
 #endif
-
-   pthread_create(&server_thread, NULL, launch_server, NULL);
 
    for (;;)
    {
