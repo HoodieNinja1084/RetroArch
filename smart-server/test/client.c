@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     connect(s2, (struct sockaddr*) &si_me2, sizeof(si_me2));
 
     packet_t cmsgme;
-    cmsgme = build_packet(CMSG_ME, 42, "Je suis un iPhone42s");
+    cmsgme = build_packet(CMSG_ME, 42, "iPhone 4 de Tuxity");
     send(s2, &cmsgme, sizeof(cmsgme), 0);
   }
 

@@ -53,6 +53,12 @@ void *launch_smartserver(void* args)
                struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
                printf("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
 
+               if ((*opcode.handler) == NULL)
+               {
+                 printf("Opcode %s(0x%02x) try to call an inappropriate handler, skipping...\n", opcode.name, pkt.opcode);
+                 break;
+               }
+
                // call appropriate handler
                (*opcode.handler)(client, pkt.data);
             }
