@@ -23,6 +23,7 @@ typedef struct client
   uint8_t type;
   uint32_t socket;
   char name[BUFFER_SIZE];
+  char ip[16];
 } client_t;
 
 

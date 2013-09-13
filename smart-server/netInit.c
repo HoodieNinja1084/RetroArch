@@ -39,8 +39,9 @@ client_t* new_client(network_t* netInfo)
    client->socket = csock;
    client->type = 0; 
    strcpy(client->name, "undefined");
+   strcpy(client->ip, inet_ntoa(csin.sin_addr));
 
-   printf("New client connected (%s).\n", inet_ntoa(csin.sin_addr));
+   printf("New client connected (%s).\n", client->ip);
 
    return (client);
 }

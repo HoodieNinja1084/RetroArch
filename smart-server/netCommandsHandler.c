@@ -4,7 +4,7 @@ void handle_me_opcode(client_t* client, unsigned char* data)
 {
    data = deserialize_uint8(&data, &client->type); 
    data = deserialize_string(&data, client->name);
-   printf("New client set: '%s' type %u\n", client->name, client->type);
+   printf("%s set informations: name '%s' type %u\n", client->ip, client->name, client->type);
 }
 
 void handle_info_opcode(client_t* client, unsigned char* data)

@@ -51,7 +51,7 @@ void *launch_smartserver(void* args)
                recv(client->socket, &pkt, sizeof(pkt), 0);
 
                struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
-               printf("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->name);
+               printf("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
 
                // call appropriate handler
                (*opcode.handler)(client, pkt.data);
