@@ -40,7 +40,7 @@ client_t* new_client(network_t* netInfo)
    client->type = 0; 
    strcpy(client->name, "undefined");
 
-   printf("New client connected.\n");
+   printf("New client connected (%s).\n", inet_ntoa(csin.sin_addr));
 
    return (client);
 }
