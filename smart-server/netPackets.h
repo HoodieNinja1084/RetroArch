@@ -6,12 +6,14 @@
 #include "netPacketsDef.h"
 
 #define MAX_BYTE 64
+#pragma pack(push)
+#pragma pack(1)
 typedef struct packet
 {
-  uint8_t opcode:5; // 5 bits : 0 - 31
+  uint8_t opcode;
   unsigned char data[MAX_BYTE];
 } packet_t;
-
+#pragma pack(pop)
 
 packet_t build_packet(uint8_t, ...);
 void serialize(va_list, const char*, unsigned char*);
