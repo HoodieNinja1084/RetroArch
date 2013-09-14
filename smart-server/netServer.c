@@ -57,6 +57,8 @@ void *launch_smartserver(void* args)
                  close(client->socket);
                  free(netInfo.clients[i]);
                  netInfo.clients[i] = NULL;
+                 actual--;
+                 break;
                }
 
                if (pkt.opcode >= OPCODE_MAXNUM)
