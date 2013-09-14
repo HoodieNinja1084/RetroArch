@@ -6,15 +6,14 @@ void *launch_smartserver(void* args)
 
    init_server(&netInfo);
 
-   uint8_t max = netInfo.sSocketUDP;
-   uint8_t actual = 0;
+   uint8_t maxsocket = netInfo.sSocketUDP;
    while (1)
    {
       FD_ZERO(&readfs);
       FD_SET(netInfo.sSocketTCP, &readfs);
 
       uint8_t i;
-      for (i = 0; i < actual; i++)
+      for (i = 0; i < netInfo.nbClients; i++)
          FD_SET(netInfo.clients[i]->socket, &readfs);
 
       if (netInfo.nbClients < MAX_CLIENT)
@@ -24,40 +23,38 @@ void *launch_smartserver(void* args)
       }
 
       struct timeval timeout = {3, 0};
-      xselect(max + 1, &readfs, NULL, NULL, &timeout);
+      xselect(maxsocket + 1, &readfs, NULL, NULL, &timeout);
 
       if (FD_ISSET(netInfo.sSocketTCP, &readfs))
       {
          // new client
-         netInfo.clients[actual] = new_client(&netInfo);
-         netInfo.nbClients++;
+         netInfo.clients[netInfo.nbClients] = new_client(&netInfo);
 
-         uint32_t csock = netInfo.clients[actual]->socket;
+         uint32_t csock = netInfo.clients[netInfo.nbClients]->socket;
          FD_SET(csock, &readfs);
-         max = csock > max ? csock : max;
-         actual++;
+         maxsocket = csock > maxsocket ? csock : maxsocket;
+         netInfo.nbClients++;
       }
       else
       {
          // a client is talking
-         for (i = 0; i < actual; i++)
+         for (i = 0; i < netInfo.nbClients; i++)
          {
             // find which one
             if (FD_ISSET(netInfo.clients[i]->socket, &readfs))
             {
-               client_t* client = netInfo.clients[i];
-
                ssize_t ret;
                packet_t pkt;
-               ret = recv(client->socket, &pkt, sizeof(pkt), 0);
+               client_t* client = netInfo.clients[i];
 
+               ret = recv(client->socket, &pkt, sizeof(pkt), 0);
                if (ret == 0)
                {
                  printf("Client %s disconnected.\n", client->ip);
                  close(client->socket);
-                 free(netInfo.clients[i]);
-                 netInfo.clients[i] = NULL;
-                 actual--;
+                 free(client);
+                 client = NULL;
+                 netInfo.nbClients--;
                  break;
                }
 
