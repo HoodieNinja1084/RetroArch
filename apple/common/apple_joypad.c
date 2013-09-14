@@ -17,15 +17,16 @@
 #include "general.h"
 
 #ifdef IOS
-#include "../iOS/input/BTStack/btdynamic.c"
-#include "../iOS/input/BTStack/wiimote.c"
-#include "../iOS/input/BTStack/btpad.c"
-#include "../iOS/input/BTStack/btpad_ps3.c"
-#include "../iOS/input/BTStack/btpad_wii.c"
-#include "../iOS/input/BTStack/btpad_queue.c"
+#include "apple/iOS/bluetooth/btdynamic.c"
+#include "apple/iOS/bluetooth/btpad.c"
+#include "apple/iOS/bluetooth/btpad_queue.c"
 #elif defined(OSX)
 #include "../OSX/hid_pad.c"
 #endif
+
+#include "apple/common/hidpad/wiimote.c"
+#include "apple/common/hidpad/hidpad_ps3.c"
+#include "apple/common/hidpad/hidpad_wii.c"
 
 
 static bool apple_joypad_init(void)

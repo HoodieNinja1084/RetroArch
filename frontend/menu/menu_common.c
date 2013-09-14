@@ -704,7 +704,7 @@ static uint64_t rgui_input(void)
 
 #ifdef HAVE_OVERLAY
    for (unsigned i = 0; i < DEVICE_NAV_LAST; i++)
-      input_state |= driver.overlay_state & menu_nav_binds[0][i].joykey ? (1ULL << i) : 0;
+      input_state |= driver.overlay_state.buttons & menu_nav_binds[0][i].joykey ? (1ULL << i) : 0;
 #endif
 #else
    static const int maps[] = {
@@ -725,7 +725,7 @@ static uint64_t rgui_input(void)
       input_state |= input_input_state_func(binds,
             0, RETRO_DEVICE_JOYPAD, 0, maps[i + 0]) ? (1ULL << maps[i + 1]) : 0;
 #ifdef HAVE_OVERLAY
-      input_state |= (driver.overlay_state & (UINT64_C(1) << maps[i + 0])) ? (1ULL << maps[i + 1]) : 0;
+      input_state |= (driver.overlay_state.buttons & (UINT64_C(1) << maps[i + 0])) ? (1ULL << maps[i + 1]) : 0;
 #endif
    }
 

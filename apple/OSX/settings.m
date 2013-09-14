@@ -14,9 +14,9 @@
  */
 
 #import <objc/runtime.h>
-#import "../RetroArch/RetroArch_Apple.h"
-#include "../RetroArch/setting_data.h"
-#include "../RetroArch/apple_input.h"
+#import "apple/common/RetroArch_Apple.h"
+#include "apple/common/setting_data.h"
+#include "apple/common/apple_input.h"
 
 #include "driver.h"
 #include "input/input_common.h"
@@ -52,7 +52,10 @@ static uint32_t key_id_for_name(const char* name)
 static const char* get_input_config_key(const rarch_setting_t* setting, const char* type)
 {
    static char buffer[32];
-   snprintf(buffer, 32, "input_player%d_%s%c%s", setting->input_player, setting->name, type ? '_' : '\0', type);
+   if (setting->input_player)
+      snprintf(buffer, 32, "input_player%d_%s%c%s", setting->input_player, setting->name, type ? '_' : '\0', type);
+   else
+      snprintf(buffer, 32, "input_%s%c%s", setting->name, type ? '_' : '\0', type);
    return buffer;
 }
 
@@ -82,6 +85,47 @@ static const char* get_axis_name(const rarch_setting_t* setting)
    
    return buffer;
 }
+
+@interface RANumberFormatter : NSNumberFormatter
+@end
+
+@implementation RANumberFormatter
+- (id)initWithFloatSupport:(bool)allowFloat minimum:(double)min maximum:(double)max
+{
+   self = [super init];
+   self.allowsFloats = allowFloat;
+   self.maximumFractionDigits = 10;
+   
+   if (min || max)
+   {
+      self.minimum = @(min);
+      self.maximum = @(max);
+   }
+   
+   return self;
+}
+
+- (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error
+{
+   bool hasDot = false;
+
+   if (partialString.length)
+      for (int i = 0; i != partialString.length; i ++)
+      {
+         unichar ch = [partialString characterAtIndex:i];
+         
+         if (i == 0 && (!self.minimum || self.minimum.intValue < 0) && ch == '-')
+            continue;
+         else if (self.allowsFloats && !hasDot && ch == '.')
+            hasDot = true;
+         else if (!isdigit(ch))
+            return NO;
+      }
+
+   return YES;
+}
+@end
+
 
 @interface RAInputBinder : NSWindow
 @end
@@ -119,6 +163,16 @@ static const char* get_axis_name(const rarch_setting_t* setting)
    if (!_setting)
       return;
    
+   if (aSetting->type == ST_INT || aSetting->type == ST_FLOAT)
+   {
+      self.textField.formatter = [[RANumberFormatter alloc] initWithFloatSupport:aSetting->type == ST_FLOAT
+                                                                         minimum:aSetting->min
+                                                                         maximum:aSetting->max];
+   }
+   else
+      self.textField.formatter = nil;
+
+   // Set value
    switch (aSetting->type)
    {
       case ST_INT:    self.numericValue = @(*(int*)aSetting->value); break;
@@ -127,6 +181,7 @@ static const char* get_axis_name(const rarch_setting_t* setting)
       case ST_PATH:   self.stringValue = @((const char*)aSetting->value); break;
       case ST_BOOL:   self.booleanValue = *(bool*)aSetting->value; break;
       case ST_BIND:   [self updateInputString]; break;
+      default:        break;
    }
 }
 
@@ -159,7 +214,7 @@ static const char* get_axis_name(const rarch_setting_t* setting)
 
 - (void)setStringValue:(NSString *)stringValue
 {
-   _stringValue = stringValue;
+   _stringValue = stringValue ? stringValue : @"";
    
    if (_setting && (_setting->type == ST_STRING || _setting->type == ST_PATH))
       strlcpy(_setting->value, _stringValue.UTF8String, _setting->size);
@@ -185,43 +240,18 @@ static const char* get_axis_name(const rarch_setting_t* setting)
 
 - (void)checkBind:(NSTimer*)send
 {
-   // Keyboard
-   for (int i = 0; apple_key_name_map[i].hid_id; i++)
-   {
-      if (g_current_input_data.keys[apple_key_name_map[i].hid_id])
-      {
-         BINDFOR(*_setting).key = input_translate_keysym_to_rk(apple_key_name_map[i].hid_id);
-         [self dismissBinder];
-         return;
-      }
-   }
+   int32_t value = 0;
 
-   // Joystick
-   if (g_current_input_data.pad_buttons[0])
-   {
-      for (int i = 0; i != 32; i ++)
-      {
-         if (g_current_input_data.pad_buttons[0] & (1 << i))
-         {
-            BINDFOR(*_setting).joykey = i;
-            [self dismissBinder];
-            return;
-         }
-      }
-   }
+   if ((value = apple_input_find_any_key()))
+      BINDFOR(*_setting).key = input_translate_keysym_to_rk(value);
+   else if ((value = apple_input_find_any_button(0)) >= 0)
+      BINDFOR(*_setting).joykey = value;
+   else if ((value = apple_input_find_any_axis(0)))
+      BINDFOR(*_setting).joyaxis = (value > 0) ? AXIS_POS(value - 1) : AXIS_NEG(value - 1);
+   else
+      return;
    
-   // Pad Axis
-   for (int i = 0; i < 4; i++)
-   {
-      int16_t value = g_current_input_data.pad_axis[0][i];
-      
-      if (abs(value) > 0x4000)
-      {
-         BINDFOR(*_setting).joyaxis = (value > 0x1000) ? AXIS_POS(i) : AXIS_NEG(i);
-         [self dismissBinder];
-         break;
-      }
-   }
+   [self dismissBinder];
 }
 
 - (IBAction)doGetBind:(id)sender
@@ -236,10 +266,6 @@ static const char* get_axis_name(const rarch_setting_t* setting)
    [NSApp beginSheet:controller.window modalForWindow:self.window modalDelegate:nil didEndSelector:nil contextInfo:nil];
 }
 
-@end
-
-@protocol RASettingView
-@property const rarch_setting_t* setting;
 @end
 
 @interface RASettingsDelegate : NSObject<NSTableViewDataSource,   NSTableViewDelegate,
@@ -259,6 +285,8 @@ static const char* get_axis_name(const rarch_setting_t* setting)
 
 - (void)awakeFromNib
 {
+   apple_enter_stasis();
+
    NSMutableArray* thisGroup = nil;
    NSMutableArray* thisSubGroup = nil;
    _settings = [NSMutableArray array];
@@ -311,7 +339,7 @@ static const char* get_axis_name(const rarch_setting_t* setting)
 
 - (void)load
 {
-   config_file_t* conf = config_file_new([RetroArch_OSX get].configPath.UTF8String);
+   config_file_t* conf = config_file_new(apple_platform.globalConfigFile.UTF8String);
 
    for (int i = 0; setting_data[i].type; i ++)
    {
@@ -340,7 +368,7 @@ static const char* get_axis_name(const rarch_setting_t* setting)
 
 - (void)windowWillClose:(NSNotification *)notification
 {
-   config_file_t* conf = config_file_new([RetroArch_OSX get].configPath.UTF8String);
+   config_file_t* conf = config_file_new(apple_platform.globalConfigFile.UTF8String);
    conf = conf ? conf : config_file_new(0);
    
    for (int i = 0; setting_data[i].type; i ++)
@@ -365,10 +393,10 @@ static const char* get_axis_name(const rarch_setting_t* setting)
          default:        break;
       }
    }
-   config_file_write(conf, [RetroArch_OSX get].configPath.UTF8String);
+   config_file_write(conf, apple_platform.globalConfigFile.UTF8String);
    config_file_free(conf);
 
-   apple_refresh_config();
+   apple_exit_stasis(true);
 
    [NSApp stopModal];
 }
@@ -444,6 +472,7 @@ static const char* get_axis_name(const rarch_setting_t* setting)
             case ST_PATH:   s = [outlineView makeViewWithIdentifier:@"RAPathSetting"    owner:nil]; break;
             case ST_STRING: s = [outlineView makeViewWithIdentifier:@"RAStringSetting"  owner:nil]; break;
             case ST_BIND:   s = [outlineView makeViewWithIdentifier:@"RABindSetting"    owner:nil]; break;
+               default:        break;
          }
          s.setting = setting;
          return s;

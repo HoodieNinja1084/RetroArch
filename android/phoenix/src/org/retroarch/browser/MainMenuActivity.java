@@ -359,23 +359,22 @@ public class MainMenuActivity extends PreferenceActivity {
 		config.setInt("audio_out_rate", optimalRate);
 		
 		// Refactor this entire mess and make this usable for per-core config
-		if (android.os.Build.VERSION.SDK_INT >= 17) {
+		if (android.os.Build.VERSION.SDK_INT >= 17 &&
+				prefs.getBoolean("audio_latency_auto", true) == true) {
 			int buffersize = getLowLatencyBufferSize();
 
 			boolean lowLatency = hasLowLatencyAudio();
 			Log.i(TAG, "Audio is low latency: " + (lowLatency ? "yes" : "no"));
 			
-			if (lowLatency && !prefs.getBoolean("audio_high_latency", false)) {
-				config.setInt("audio_latency", 64);
+			config.setInt("audio_latency", 64);
+			if (lowLatency) {
 				config.setInt("audio_block_frames", buffersize);
 			} else {
-				config.setInt("audio_latency", prefs.getBoolean(
-						"audio_high_latency", false) ? 160 : 64);
 				config.setInt("audio_block_frames", 0);
 			}
 		} else {
-			config.setInt("audio_latency",
-					prefs.getBoolean("audio_high_latency", false) ? 160 : 64);		
+			String latency_audio = prefs.getString("audio_latency", "64");
+			config.setInt("audio_latency", Integer.parseInt(latency_audio));
 		}
 
 		config.setBoolean("audio_enable",
@@ -681,6 +680,8 @@ public class MainMenuActivity extends PreferenceActivity {
 											false);
 									edit.putBoolean("input_autodetect_enable",
 											true);
+									edit.putString("audio_latency", "64");
+									edit.putBoolean("audio_latency_auto", true);
 									edit.commit();
 								}
 							});
@@ -702,7 +703,8 @@ public class MainMenuActivity extends PreferenceActivity {
 											false);
 									edit.putBoolean("input_autodetect_enable",
 											true);
-									edit.putBoolean("audio_high_latency", true);
+									edit.putString("audio_latency", "160");
+									edit.putBoolean("audio_latency_auto", false);
 									edit.commit();
 								}
 							});
@@ -724,11 +726,39 @@ public class MainMenuActivity extends PreferenceActivity {
 											false);
 									edit.putBoolean("input_autodetect_enable",
 											true);
+									edit.putString("audio_latency", "64");
+									edit.putBoolean("audio_latency_auto", true);
 									edit.commit();
 								}
 							});
 			alert.show();
 			retval = true;
+		} else if (android.os.Build.MODEL.equals("R800x")) {
+					AlertDialog.Builder alert = new AlertDialog.Builder(this)
+							.setTitle("Xperia Play detected")
+							.setMessage(message)
+							.setPositiveButton("OK",
+									new DialogInterface.OnClickListener() {
+										@Override
+										public void onClick(DialogInterface dialog,
+												int which) {
+											SharedPreferences prefs = getPreferences();
+											SharedPreferences.Editor edit = prefs
+													.edit();
+											edit.putBoolean("video_threaded", false);
+											edit.putBoolean("input_overlay_enable",
+													false);
+											edit.putBoolean("input_autodetect_enable",
+													true);
+											edit.putString("video_refresh_rate", Double
+													.valueOf(59.19132938771038).toString());
+											edit.putString("audio_latency", "128");
+											edit.putBoolean("audio_latency_auto", false);
+											edit.commit();
+										}
+									});
+					alert.show();
+					retval = true;
 		} else if (android.os.Build.ID.equals("JSS15J")) {
 			AlertDialog.Builder alert = new AlertDialog.Builder(this)
 					.setTitle("Nexus 7 2013 detected")
@@ -743,6 +773,8 @@ public class MainMenuActivity extends PreferenceActivity {
 											.edit();
 									edit.putString("video_refresh_rate", Double
 											.valueOf(59.65).toString());
+									edit.putString("audio_latency", "64");
+									edit.putBoolean("audio_latency_auto", false);
 									edit.commit();
 								}
 							});

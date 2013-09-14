@@ -43,6 +43,7 @@
             <ListPreference
                 android:entries="@array/aspect_ratios"
                 android:entryValues="@array/aspect_values"
+                android:defaultValue="auto"
                 android:key="video_aspect_ratio"
                 android:summary="Aspect ratio to enforce."
                 android:title="Aspect ratio" />
@@ -113,11 +114,19 @@
                 android:summary="Enable dynamic rate control (recommended)."
                 android:title="Dynamic Rate Control"
                 android:dependency="audio_enable" />
+            <ListPreference
+                android:entries="@array/audio_latency_options"
+                android:entryValues="@array/audio_latency_options_values"
+                android:defaultValue="64"
+                android:key="audio_latency"
+                android:summary="Set the amount of desired audio latency. Your mileage may vary on the device you are using."
+                android:title="Audio latency"
+                android:dependency="audio_enable" />
             <CheckBoxPreference 
-                android:defaultValue="false"
-                android:key="audio_high_latency"
-                android:summary="Use (very) high latency audio. Necessary for older Android devices with poor audio drivers."
-                android:title="High latency audio"
+                android:defaultValue="true"
+                android:key="audio_latency_auto"
+                android:summary="Use automatic audio latency detection. Only available for Android 4.1 and up - your mileage may vary based on the device you are using."
+                android:title="Automatic audio latency"
                 android:dependency="audio_enable" />
         </PreferenceCategory>
     </PreferenceScreen>
@@ -126,6 +135,7 @@
             <ListPreference
                 android:entries="@array/back_options"
                 android:entryValues="@array/back_options_values"
+                android:defaultValue="0"
                 android:key="input_back_behavior"
                 android:summary="Select how you want the Back button to behave."
                 android:title="Back behavior" />

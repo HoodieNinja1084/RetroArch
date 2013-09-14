@@ -17,6 +17,7 @@ OBJ = frontend/frontend.o \
 		movie.o \
 		gfx/gfx_common.o \
 		input/input_common.o \
+		input/autoconf/builtin_win.o \
 		core_options.o \
 		patch.o \
 		compat/compat.o \
@@ -82,7 +83,7 @@ endif
 libretro ?= -lretro
 
 LIBS = -lm
-DEFINES = -I. -DHAVE_SCREENSHOTS -DHAVE_BSV_MOVIE
+DEFINES = -I. -DHAVE_SCREENSHOTS -DHAVE_BSV_MOVIE -DHAVE_BUILTIN_AUTOCONFIG
 LDFLAGS = -L. -static-libgcc
 
 ifeq ($(TDM_GCC),)
@@ -319,10 +320,10 @@ clean:
 	rm -f tools/*.o
 
 dist_x86: all
-	zip -r retroarch-win32-0.9.9.4.zip $(TARGET) $(JTARGET) retroarch.cfg
+	zip -r retroarch-win32-0.9.9.6.zip $(TARGET) $(JTARGET) retroarch.cfg
 
 dist_x86_64: all
-	zip -r retroarch-win64-0.9.9.4.zip $(TARGET) $(JTARGET) retroarch.cfg
+	zip -r retroarch-win64-0.9.9.6.zip $(TARGET) $(JTARGET) retroarch.cfg
 
 libs_x86:
 	wget http://themaister.net/retroarch-dl/RetroArch-win32-libs.zip

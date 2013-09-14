@@ -106,6 +106,7 @@ struct rarch_key_map
 extern const struct rarch_key_map rarch_key_map_x11[];
 extern const struct rarch_key_map rarch_key_map_sdl[];
 extern const struct rarch_key_map rarch_key_map_dinput[];
+extern const struct rarch_key_map rarch_key_map_rwebinput[];
 
 void input_init_keyboard_lut(const struct rarch_key_map *map);
 enum retro_key input_translate_keysym_to_rk(unsigned sym);
@@ -134,6 +135,8 @@ struct input_key_map
    enum retro_key key;
 };
 extern const struct input_key_map input_config_key_map[];
+
+extern const char* const input_builtin_autoconfs[];
 
 const char *input_config_get_prefix(unsigned player, bool meta);
 

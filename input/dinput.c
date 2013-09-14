@@ -349,7 +349,8 @@ const input_driver_t input_dinput = {
 // Keep track of which pad indexes are 360 controllers
 // not static, will be read in winxinput_joypad.c
 // -1 = not xbox pad, otherwise 0..3
-int g_xbox_pad_indexes[MAX_PLAYERS];
+int g_xinput_pad_indexes[MAX_PLAYERS];
+bool g_xinput_block_pads;
 
 static void dinput_joypad_destroy(void)
 {
@@ -397,18 +398,31 @@ static BOOL CALLBACK enum_axes_cb(const DIDEVICEOBJECTINSTANCE *inst, void *p)
 // example code is a horrible unsightly mess.
 static const char* const XINPUT_PAD_NAMES[] = 
 {
+   "XBOX 360 For Windows",
    "Controller (Gamepad for Xbox 360)",
    "Controller (XBOX 360 For Windows)",
    "Controller (Xbox 360 Wireless Receiver for Windows)",
    "Controller (Xbox wireless receiver for windows)",
    "XBOX 360 For Windows (Controller)",
    "Xbox 360 Wireless Receiver",
+   "Xbox 360 Wireless Controller",
    "Xbox Receiver for Windows (Wireless Controller)",
    "Xbox wireless receiver for windows (Controller)",
+   "Gamepad F310 (Controller)",
+   "Controller (Gamepad F310)",
+   "Wireless Gamepad F710 (Controller)",
+   "Controller (Batarang wired controller (XBOX))",
+   "Afterglow Gamepad for Xbox 360 (Controller)"
+   "Controller (Rumble Gamepad F510)",
+   "Controller (Wireless Gamepad F710)",
+   "Controller (Xbox 360 Wireless Receiver for Windows)",
+   "Controller (Xbox wireless receiver for windows)",
+   "Controller (XBOX360 GAMEPAD)",
+   "MadCatz GamePad",
    NULL
 };
 
-static bool name_is_360_pad(const char* name)
+static bool name_is_xinput_pad(const char* name)
 {
    for (unsigned i = 0; ; ++i)
    {
@@ -422,8 +436,7 @@ static bool name_is_360_pad(const char* name)
 
 // Forward declaration
 static const char *dinput_joypad_name(unsigned pad);
-
-static int g_last_xbox_pad_index;
+static unsigned g_last_xinput_pad_index;
 
 static BOOL CALLBACK enum_joypad_cb(const DIDEVICEINSTANCE *inst, void *p)
 {
@@ -443,14 +456,12 @@ static BOOL CALLBACK enum_joypad_cb(const DIDEVICEINSTANCE *inst, void *p)
    g_pads[g_joypad_cnt].joy_name = strdup(inst->tszProductName);
    
 #ifdef HAVE_WINXINPUT
-   bool is_360_pad = name_is_360_pad(inst->tszProductName);
+   bool is_xinput_pad = g_xinput_block_pads && name_is_xinput_pad(inst->tszProductName);
    
-   if (is_360_pad)
+   if (is_xinput_pad)
    {
-      if (g_last_xbox_pad_index < 4)
-         g_xbox_pad_indexes[g_joypad_cnt] = g_last_xbox_pad_index;
-      ++g_last_xbox_pad_index;
-      
+      if (g_last_xinput_pad_index < 4)
+         g_xinput_pad_indexes[g_joypad_cnt] = g_last_xinput_pad_index++;
       goto enum_iteration_done;
    }
 #endif
@@ -463,7 +474,7 @@ static BOOL CALLBACK enum_joypad_cb(const DIDEVICEINSTANCE *inst, void *p)
          *pad, DIDFT_ABSAXIS);
          
 #ifdef HAVE_WINXINPUT
-   if (!is_360_pad)
+   if (!is_xinput_pad)
 #endif
    {
       strlcpy(g_settings.input.device_names[g_joypad_cnt], dinput_joypad_name(g_joypad_cnt), sizeof(g_settings.input.device_names[g_joypad_cnt]));
@@ -480,11 +491,11 @@ static bool dinput_joypad_init(void)
    if (!dinput_init_context())
       return false;
    
-   g_last_xbox_pad_index = 0;
+   g_last_xinput_pad_index = 0;
    
    for (unsigned i = 0; i < MAX_PLAYERS; ++i)
    {
-      g_xbox_pad_indexes[i] = -1;
+      g_xinput_pad_indexes[i] = -1;
       g_pads[i].joy_name = NULL;
    }
 
@@ -594,7 +605,7 @@ static void dinput_joypad_poll(void)
    {
       struct dinput_joypad *pad = &g_pads[i];
 
-      if ((pad->joypad) && (g_xbox_pad_indexes[i] == -1))
+      if (pad->joypad && g_xinput_pad_indexes[i] < 0)
       {
          memset(&pad->joy_state, 0, sizeof(pad->joy_state));
 
@@ -624,8 +635,6 @@ static bool dinput_joypad_query_pad(unsigned pad)
 {
    return pad < MAX_PLAYERS && g_pads[pad].joypad;
 }
-
-
 
 static const char *dinput_joypad_name(unsigned pad)
 {

@@ -783,22 +783,22 @@ void gl_set_viewport(void *data, unsigned width, unsigned height, bool force_ful
       else
 #endif
       {
-         if (fabs(device_aspect - desired_aspect) < 0.0001)
+         if (fabsf(device_aspect - desired_aspect) < 0.0001f)
          {
             // If the aspect ratios of screen and desired aspect ratio are sufficiently equal (floating point stuff), 
             // assume they are actually equal.
          }
          else if (device_aspect > desired_aspect)
          {
-            delta = (desired_aspect / device_aspect - 1.0) / 2.0 + 0.5;
-            x     = (unsigned)(width * (0.5 - delta));
-            width = (unsigned)(2.0 * width * delta);
+            delta = (desired_aspect / device_aspect - 1.0f) / 2.0f + 0.5f;
+            x     = (int)roundf(width * (0.5f - delta));
+            width = (unsigned)roundf(2.0f * width * delta);
          }
          else
          {
-            delta  = (device_aspect / desired_aspect - 1.0) / 2.0 + 0.5;
-            y      = (unsigned)(height * (0.5 - delta));
-            height = (unsigned)(2.0 * height * delta);
+            delta  = (device_aspect / desired_aspect - 1.0f) / 2.0f + 0.5f;
+            y      = (int)roundf(height * (0.5f - delta));
+            height = (unsigned)roundf(2.0f * height * delta);
          }
       }
 
@@ -1402,18 +1402,7 @@ static bool gl_frame(void *data, const void *frame, unsigned width, unsigned hei
       glBindTexture(GL_TEXTURE_2D, gl->texture[gl->tex_index]);
 
 #ifdef HAVE_FBO
-      // Data is already on GPU :) Have to reset some state however incase core changed it.
-      if (gl->hw_render_fbo_init)
-      {
-         gl_update_input_size(gl, width, height, pitch, false);
-
-         if (!gl->fbo_inited)
-         {
-            gl_bind_backbuffer();
-            gl_set_viewport(gl, gl->win_width, gl->win_height, false, true);
-         }
-      }
-      else
+      if (!gl->hw_render_fbo_init)
 #endif
       {
          gl_update_input_size(gl, width, height, pitch, true);
@@ -1430,6 +1419,13 @@ static bool gl_frame(void *data, const void *frame, unsigned width, unsigned hei
 #ifdef HAVE_FBO
    if (gl->hw_render_fbo_init)
    {
+      gl_update_input_size(gl, width, height, pitch, false);
+      if (!gl->fbo_inited)
+      {
+         gl_bind_backbuffer();
+         gl_set_viewport(gl, gl->win_width, gl->win_height, false, true);
+      }
+
 #ifndef HAVE_OPENGLES
       if (!gl->core_context)
          glEnable(GL_TEXTURE_2D);
@@ -2294,6 +2290,12 @@ static bool gl_read_viewport(void *data, uint8_t *buffer)
 
    RARCH_PERFORMANCE_INIT(read_viewport);
    RARCH_PERFORMANCE_START(read_viewport);
+
+#ifdef HAVE_FBO
+   // Make sure we're reading from backbuffer incase some state has been overridden.
+   if (gl->hw_render_fbo_init || gl->fbo_inited)
+      gl_bind_backbuffer();
+#endif
 
 #ifdef HAVE_OPENGLES
    glPixelStorei(GL_PACK_ALIGNMENT, get_alignment(gl->vp.width * 3));

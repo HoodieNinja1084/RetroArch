@@ -67,6 +67,8 @@ const char *config_get_default_audio(void)
          return "ps3";
       case AUDIO_WII:
          return "gx";
+      case AUDIO_RWEBAUDIO:
+         return "rwebaudio";
       case AUDIO_NULL:
          return "null";
       default:
@@ -137,6 +139,8 @@ const char *config_get_default_input(void)
          return "apple_input";
       case INPUT_QNX:
       	 return "qnx_input";
+      case INPUT_RWEBINPUT:
+      	 return "rwebinput";
       case INPUT_NULL:
          return "null";
       default:
@@ -1093,6 +1097,8 @@ bool config_save_file(const char *path)
       config_set_int(conf, cfg, g_settings.input.dpad_emulation[i]);
       snprintf(cfg, sizeof(cfg), "input_device_p%u", i + 1);
       config_set_int(conf, cfg, g_settings.input.device[i]);
+      snprintf(cfg, sizeof(cfg), "input_player%u_joypad_index", i + 1);
+      config_set_int(conf, cfg, g_settings.input.joypad_map[i]);
    }
 
    config_file_write(conf, path);  

@@ -463,7 +463,7 @@ size_t audio_sample_batch(const int16_t *data, size_t frames)
 #ifdef HAVE_OVERLAY
 static inline void input_poll_overlay(void)
 {
-   driver.overlay_state = 0;
+   memset(&driver.overlay_state, 0, sizeof(driver.overlay_state));
 
    unsigned device = input_overlay_full_screen(driver.overlay) ?
       RARCH_DEVICE_POINTER_SCREEN : RETRO_DEVICE_POINTER;
@@ -478,7 +478,15 @@ static inline void input_poll_overlay(void)
       int16_t y = input_input_state_func(NULL, 0,
             device, i, RETRO_DEVICE_ID_POINTER_Y);
 
-      driver.overlay_state |= input_overlay_poll(driver.overlay, x, y);
+      input_overlay_state_t polled_data;
+      input_overlay_poll(driver.overlay, &polled_data, x, y);
+
+      driver.overlay_state.buttons |= polled_data.buttons;
+
+      for (unsigned j = 0; j < 4; j ++)
+         if (driver.overlay_state.analog[j] == 0)
+            driver.overlay_state.analog[j] = polled_data.analog[j];
+
       polled = true;
    }
 
@@ -545,7 +553,13 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 
 #ifdef HAVE_OVERLAY
    if (device == RETRO_DEVICE_JOYPAD && port == 0)
-      res |= driver.overlay_state & (UINT64_C(1) << id) ? 1 : 0;
+      res |= driver.overlay_state.buttons & (UINT64_C(1) << id) ? 1 : 0;
+   else if (device == RETRO_DEVICE_ANALOG && port == 0)
+   {
+      unsigned base = (index == RETRO_DEVICE_INDEX_ANALOG_RIGHT) ? 2 : 0;
+      base += (id == RETRO_DEVICE_ID_ANALOG_Y) ? 1 : 0;
+      res += driver.overlay_state.analog[base];
+   }
 #endif
 
    // Don't allow turbo for D-pad.
@@ -1422,7 +1436,7 @@ void rarch_init_rewind(void)
    if (!g_settings.rewind_enable || g_extern.state_manager)
       return;
 
-   if (g_extern.system.audio_callback)
+   if (g_extern.system.audio_callback.callback)
    {
       RARCH_ERR("Implementation uses threaded audio. Cannot use rewind.\n");
       return;
@@ -1880,14 +1894,22 @@ void rarch_load_state(void)
    else
       snprintf(load_path, sizeof(load_path), "%s", g_extern.savestate_name);
 
+   size_t size = pretro_serialize_size();
    char msg[512];
-   if (load_state(load_path))
-      snprintf(msg, sizeof(msg), "Loaded state from slot #%u.", g_extern.state_slot);
+
+   if (size)
+   {
+      if (load_state(load_path))
+         snprintf(msg, sizeof(msg), "Loaded state from slot #%u.", g_extern.state_slot);
+      else
+         snprintf(msg, sizeof(msg), "Failed to load state from \"%s\".", load_path);
+   }
    else
-      snprintf(msg, sizeof(msg), "Failed to load state from \"%s\".", load_path);
+      strlcpy(msg, "Core does not support save states.", sizeof(msg));
 
    msg_queue_clear(g_extern.msg_queue);
    msg_queue_push(g_extern.msg_queue, msg, 2, 180);
+   RARCH_LOG("%s\n", msg);
 }
 
 void rarch_save_state(void)
@@ -1902,14 +1924,22 @@ void rarch_save_state(void)
    else
       snprintf(save_path, sizeof(save_path), "%s", g_extern.savestate_name);
 
+   size_t size = pretro_serialize_size();
    char msg[512];
-   if (save_state(save_path))
-      snprintf(msg, sizeof(msg), "Saved state to slot #%u.", g_extern.state_slot);
+
+   if (size)
+   {
+      if (save_state(save_path))
+         snprintf(msg, sizeof(msg), "Saved state to slot #%u.", g_extern.state_slot);
+      else
+         snprintf(msg, sizeof(msg), "Failed to save state to \"%s\".", save_path);
+   }
    else
-      snprintf(msg, sizeof(msg), "Failed to save state to \"%s\".", save_path);
+      strlcpy(msg, "Core does not support save states.", sizeof(msg));
 
    msg_queue_clear(g_extern.msg_queue);
    msg_queue_push(g_extern.msg_queue, msg, 2, 180);
+   RARCH_LOG("%s\n", msg);
 }
 
 // Save or load state here.
