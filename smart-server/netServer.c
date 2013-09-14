@@ -55,7 +55,7 @@ void *launch_smartserver(void* args)
 
                if ((*opcode.handler) == NULL)
                {
-                 printf("Opcode %s(0x%02x) try to call an inappropriate handler, skipping...\n", opcode.name, pkt.opcode);
+                 printf("No handler defined for opcode %s(0x%02x), skipping...\n", opcode.name, pkt.opcode);
                  break;
                }
 
