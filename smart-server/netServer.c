@@ -50,14 +50,20 @@ void *launch_smartserver(void* args)
                packet_t pkt;
                recv(client->socket, &pkt, sizeof(pkt), 0);
 
-               struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
-               printf("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
+               if (pkt.opcode >= OPCODE_MAXNUM)
+               {
+                 printf("Unknow opcode 0x%02x, skipping...\n", pkt.opcode);
+                 break;
+               }
 
+               struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
                if ((*opcode.handler) == NULL)
                {
                  printf("No handler defined for opcode %s(0x%02x), skipping...\n", opcode.name, pkt.opcode);
                  break;
                }
+
+               printf("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
 
                // call appropriate handler
                (*opcode.handler)(client, pkt.data);

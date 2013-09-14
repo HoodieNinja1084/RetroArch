@@ -15,10 +15,10 @@ int main(int argc, char** argv)
   si_me1.sin_port = htons(UDP_PORT);
   si_me1.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  bind(s1, &si_me1, sizeof(si_me1));
+  bind(s1, (const struct sockaddr *)&si_me1, sizeof(si_me1));
 
   packet_t buffer;
-  recvfrom(s1, &buffer, sizeof(buffer), 0, &addr, &fromlen);
+  recvfrom(s1, &buffer, sizeof(buffer), 0, (struct sockaddr *)&addr, &fromlen);
   printf(">>> receive from %s\n", inet_ntoa(addr.sin_addr));
   printf(">>> opcode %u\n", buffer.opcode);
   printf(">>> data : %s<<<<\n", buffer.data);
@@ -37,6 +37,8 @@ int main(int argc, char** argv)
     cmsgme = build_packet(CMSG_ME, 42, "iPhone 4 de Tuxity");
     send(s2, &cmsgme, sizeof(cmsgme), 0);
   }
+
+  getchar();
 
   return (0);
 }
