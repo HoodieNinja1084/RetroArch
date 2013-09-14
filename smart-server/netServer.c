@@ -47,8 +47,17 @@ void *launch_smartserver(void* args)
             {
                client_t* client = netInfo.clients[i];
 
+               ssize_t ret;
                packet_t pkt;
-               recv(client->socket, &pkt, sizeof(pkt), 0);
+               ret = recv(client->socket, &pkt, sizeof(pkt), 0);
+
+               if (ret == 0)
+               {
+                 printf("Client %s disconnected.\n", client->ip);
+                 close(client->socket);
+                 free(netInfo.clients[i]);
+                 netInfo.clients[i] = NULL;
+               }
 
                if (pkt.opcode >= OPCODE_MAXNUM)
                {

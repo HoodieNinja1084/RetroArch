@@ -29,13 +29,14 @@ int main(int argc, char** argv)
 
     si_me2.sin_family = AF_INET;
     si_me2.sin_port = htons(TCP_PORT);
-    si_me2.sin_addr.s_addr = inet_addr(inet_ntoa(addr.sin_addr));
+    si_me2.sin_addr.s_addr = inet_addr("192.168.1.75");
 
     connect(s2, (struct sockaddr*) &si_me2, sizeof(si_me2));
 
     packet_t cmsgme;
     cmsgme = build_packet(CMSG_ME, 42, "iPhone 4 de Tuxity");
     send(s2, &cmsgme, sizeof(cmsgme), 0);
+    printf("sent\n");
   }
 
   getchar();
