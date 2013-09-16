@@ -3070,12 +3070,14 @@ bool rarch_main_iterate(void)
       g_extern.audio_data.dsp_plugin->events(g_extern.audio_data.dsp_handle);
 #endif
 
+   /*
    if (netInfo.nbClients == 0)
    {
       RARCH_LOG_OUTPUT("SmartServer: not enought clients connected.\n");
 
       while (netInfo.nbClients == 0); // loop here until one client is connected
    }
+   */
 
    // SHUTDOWN on consoles should exit RetroArch completely.
    if (g_extern.system.shutdown)

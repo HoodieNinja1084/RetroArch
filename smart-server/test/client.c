@@ -1,5 +1,20 @@
-#include "netSharedDefines.h"
-#include "netPackets.h"
+#include "../netSharedDefines.h"
+#include "../netPackets.h"
+
+struct actions
+{
+  char* str;
+  uint32_t opcode;
+};
+
+static const struct actions map[] = {
+  { "up", CMSG_BUTTON_UP},
+  { "down", CMSG_BUTTON_DOWN},
+  { "left", CMSG_BUTTON_LEFT},
+  { "right", CMSG_BUTTON_RIGHT},
+  { "x", CMSG_BUTTON_X},
+};
+
 
 int main(int argc, char** argv)
 {
@@ -37,6 +52,19 @@ int main(int argc, char** argv)
     cmsgme = build_packet(CMSG_ME, 42, "iPhone 4 de Tuxity");
     send(s2, &cmsgme, sizeof(cmsgme), 0);
     printf("sent\n");
+
+    while (1)
+    {
+      size_t len = 0;
+      char line[256];
+      int n = read(0, &line, sizeof(line));
+      line[strlen(line)-1] = '\0';
+      printf ("\n>>%s<<\n", line);
+      packet_t pkt;
+      pkt = build_packet(CMSG_BUTTON_X);
+      send(s2, &pkt, sizeof(pkt), 0);
+    }
+
   }
 
   getchar();
