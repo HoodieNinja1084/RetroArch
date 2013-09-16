@@ -15,7 +15,7 @@
 
 # define TCP_PORT 3000
 # define UDP_PORT 3001
-# define MAX_CLIENT 4
+# define MAX_CLIENT 1
 
 # define BUFFER_SIZE 256
 typedef struct client
