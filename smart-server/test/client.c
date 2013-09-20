@@ -13,6 +13,7 @@ static const struct actions map[] = {
   { "left", CMSG_BUTTON_LEFT},
   { "right", CMSG_BUTTON_RIGHT},
   { "x", CMSG_BUTTON_X},
+  { NULL, 0},
 };
 
 
@@ -59,15 +60,20 @@ int main(int argc, char** argv)
       char line[256];
       int n = read(0, &line, sizeof(line));
       line[strlen(line)-1] = '\0';
-      printf ("\n>>%s<<\n", line);
-      packet_t pkt;
-      pkt = build_packet(CMSG_BUTTON_X);
-      send(s2, &pkt, sizeof(pkt), 0);
+
+      int i;
+      for (i = 0; map[i].str; i++)
+      {
+         if (!strcmp(map[i].str, line))
+         {
+           packet_t pkt;
+           pkt = build_packet(map[i].opcode);
+           send(s2, &pkt, sizeof(pkt), 0);
+         }
+      }
     }
 
   }
-
-  getchar();
 
   return (0);
 }
