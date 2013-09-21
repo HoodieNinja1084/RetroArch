@@ -61,6 +61,7 @@ static const float ALMOST_INVISIBLE = .021f;
 static GLKView* g_view;
 static UIView* g_pause_view;
 static UIView* g_pause_indicator_view;
+static UITextField* g_text_hide;
 
 #elif defined(OSX)
 
@@ -161,10 +162,17 @@ static bool g_is_syncing = true;
    [g_view addSubview:g_pause_view];
    [g_view addSubview:g_pause_indicator_view];
 
+   if (is_ios_7())
+   {
+      g_text_hide = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+      [g_view addSubview:g_text_hide];
+      g_text_hide.hidden = YES;
+      [g_text_hide becomeFirstResponder];
+   }
+
    self.view = g_view;
    return self;
 }
-
 
 // Pause Menus
 - (void)viewWillLayoutSubviews
@@ -181,6 +189,9 @@ static bool g_is_syncing = true;
    g_pause_view.frame = CGRectMake(width / 2.0f - 150.0f, height / 2.0f - 150.0f, 300.0f, 300.0f);
    g_pause_indicator_view.frame = CGRectMake(tenpctw * 4.0f, 0.0f, tenpctw * 2.0f, tenpcth);
    [g_pause_indicator_view viewWithTag:1].frame = CGRectMake(0, 0, tenpctw * 2.0f, tenpcth);
+
+   if (is_ios_7())
+      [g_text_hide becomeFirstResponder];
 }
 
 - (void)openPauseMenu
@@ -215,6 +226,12 @@ static bool g_is_syncing = true;
    ];
 }
 
+- (void)iOS7SetiCadeMode:(bool)on
+{
+   g_text_hide.enabled = on;
+   [self viewWillLayoutSubviews];
+}
+
 #endif
 
 @end
@@ -222,14 +239,17 @@ static bool g_is_syncing = true;
 static RAScreen* get_chosen_screen()
 {
    unsigned monitor = g_settings.video.monitor_index;
-         
-   if (monitor >= RAScreen.screens.count)
+
+   @autoreleasepool
    {
-      RARCH_WARN("video_monitor_index is greater than the number of connected monitors; using main screen instead.\n");
-      return RAScreen.mainScreen;
+      if (monitor >= RAScreen.screens.count)
+      {
+         RARCH_WARN("video_monitor_index is greater than the number of connected monitors; using main screen instead.\n");
+         return RAScreen.mainScreen;
+      }
+
+      return RAScreen.screens[monitor];
    }
-   
-   return RAScreen.screens[monitor];
 }
 
 bool apple_gfx_ctx_init()

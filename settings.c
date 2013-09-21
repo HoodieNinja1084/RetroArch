@@ -659,10 +659,15 @@ bool config_load_file(const char *path)
 
    CONFIG_GET_PATH(core_options_path, "core_options_path");
    CONFIG_GET_PATH(screenshot_directory, "screenshot_directory");
-   if (*g_settings.screenshot_directory && !path_is_directory(g_settings.screenshot_directory))
+   if (*g_settings.screenshot_directory)
    {
-      RARCH_WARN("screenshot_directory is not an existing directory, ignoring ...\n");
-      *g_settings.screenshot_directory = '\0';
+      if (!strcmp(g_settings.screenshot_directory, "default"))
+         *g_settings.screenshot_directory = '\0';
+      else if (!path_is_directory(g_settings.screenshot_directory))
+      {
+         RARCH_WARN("screenshot_directory is not an existing directory, ignoring ...\n");
+         *g_settings.screenshot_directory = '\0';
+      }
    }
 
 #ifdef HAVE_RGUI
@@ -991,6 +996,8 @@ bool config_save_file(const char *path)
    config_set_int(conf, "video_hard_sync_frames", g_settings.video.hard_sync_frames);
    config_set_bool(conf, "video_black_frame_insertion", g_settings.video.black_frame_insertion);
    config_set_int(conf, "video_swap_interval", g_settings.video.swap_interval);
+   config_set_bool(conf, "video_gpu_screenshot", g_settings.video.gpu_screenshot);
+   config_set_string(conf, "screenshot_directory", *g_settings.screenshot_directory ? g_settings.screenshot_directory : "default");
    config_set_int(conf, "aspect_ratio_index", g_settings.video.aspect_ratio_idx);
    config_set_string(conf, "audio_device", g_settings.audio.device);
    config_set_bool(conf, "audio_rate_control", g_settings.audio.rate_control);
@@ -1125,6 +1132,67 @@ bool config_save_keybinds(const char *path)
 
 void settings_set(uint64_t settings)
 {
+#ifdef HAVE_OVERLAY
+   if (settings & (1ULL << S_INPUT_OVERLAY_OPACITY_DECREMENT))
+   {
+      g_settings.input.overlay_opacity -= 0.01f;
+
+      if (g_settings.input.overlay_opacity < 0.0f)
+         g_settings.input.overlay_opacity = 0.0f;
+   }
+
+   if (settings & (1ULL << S_INPUT_OVERLAY_OPACITY_INCREMENT))
+   {
+      g_settings.input.overlay_opacity += 0.01f;
+
+      if (g_settings.input.overlay_opacity > 1.0f)
+         g_settings.input.overlay_opacity = 1.0f;
+   }
+
+   if (settings & (1ULL << S_DEF_INPUT_OVERLAY_OPACITY))
+      g_settings.input.overlay_opacity = 1.0f;
+
+   if (settings & (1ULL << S_INPUT_OVERLAY_SCALE_DECREMENT))
+   {
+      g_settings.input.overlay_scale -= 0.01f;
+
+      if (g_settings.input.overlay_scale < 0.01f) // Avoid potential divide by zero.
+         g_settings.input.overlay_scale = 0.01f;
+   }
+
+   if (settings & (1ULL << S_INPUT_OVERLAY_SCALE_INCREMENT))
+   {
+      g_settings.input.overlay_scale += 0.01f;
+
+      if (g_settings.input.overlay_scale > 2.0f)
+         g_settings.input.overlay_scale = 2.0f;
+   }
+
+   if (settings & (1ULL << S_DEF_INPUT_OVERLAY_SCALE))
+      g_settings.input.overlay_opacity = 1.0f;
+#endif
+
+   if (settings & (1ULL << S_REWIND_GRANULARITY_INCREMENT))
+      g_settings.rewind_granularity++;
+
+   if (settings & (1ULL << S_REWIND_GRANULARITY_DECREMENT))
+   {
+      if (g_settings.rewind_granularity > 1)
+         g_settings.rewind_granularity--;
+   }
+
+   if (settings & (1ULL << S_DEF_REWIND_GRANULARITY))
+      g_settings.rewind_granularity = 1;
+
+   if (settings & (1ULL << S_VIDEO_VSYNC_TOGGLE))
+      g_settings.video.vsync = !g_settings.video.vsync;
+
+   if (settings & (1ULL << S_VIDEO_FULLSCREEN_TOGGLE))
+      g_settings.video.fullscreen = !g_settings.video.fullscreen;
+
+   if (settings & (1ULL << S_DEF_VIDEO_VSYNC))
+      g_settings.video.vsync = true;
+
    if (settings & (1ULL << S_ASPECT_RATIO_DECREMENT))
    {
       if (g_settings.video.aspect_ratio_idx > 0)

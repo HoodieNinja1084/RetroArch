@@ -272,14 +272,13 @@ HRESULT CRetroArchFileBrowser::OnNotifyPress( HXUIOBJ hObjPressed, BOOL& bHandle
       wcstombs(str_buffer, (const wchar_t *)XuiListGetText(m_menulist, index), sizeof(str_buffer));
       if (path_file_exists(rgui->browser->list->elems[index].data))
       {
-         snprintf(g_extern.fullpath, sizeof(g_extern.fullpath), "%s\\%s",
-               rgui->browser->current_dir.directory_path, str_buffer);
+         fill_pathname_join(g_extern.fullpath, rgui->browser->current_dir.directory_path, str_buffer, sizeof(g_extern.fullpath));
          g_extern.lifecycle_mode_state |= (1ULL << MODE_LOAD_GAME);
          process_input_ret = -1;
       }
       else if(rgui->browser->list->elems[index].attr.b)
       {
-         snprintf(path, sizeof(path), "%s\\%s", rgui->browser->current_dir.directory_path, str_buffer);
+         fill_pathname_join(path, rgui->browser->current_dir.directory_path, str_buffer, sizeof(path));
          uint64_t action = (1ULL << DEVICE_NAV_B);
          filebrowser_set_root_and_ext(rgui->browser, rgui->info.valid_extensions, path);
          filebrowser_fetch_directory_entries(action);
@@ -296,13 +295,13 @@ static void set_dpad_emulation_label(unsigned port, char *str, size_t sizeof_str
    switch(g_settings.input.dpad_emulation[port])
    {
       case ANALOG_DPAD_NONE:
-         snprintf(str, sizeof_str, "D-Pad Emulation: None");
+         strlcpy(str, "D-Pad Emulation: None", sizeof_str);
          break;
       case ANALOG_DPAD_LSTICK:
-         snprintf(str, sizeof_str, "D-Pad Emulation: Left Stick");
+         strlcpy(str, "D-Pad Emulation: Left Stick", sizeof_str);
          break;
       case ANALOG_DPAD_RSTICK:
-         snprintf(str, sizeof_str, "D-Pad Emulation: Right Stick");
+         strlcpy(str, "D-Pad Emulation: Right Stick", sizeof_str);
          break;
    }
 }
@@ -1185,7 +1184,7 @@ HRESULT CRetroArchShaderBrowser::OnNotifyPress( HXUIOBJ hObjPressed, BOOL& bHand
       else if (rgui->browser->list->elems[index].attr.b)
       {
          wcstombs(str_buffer, (const wchar_t *)XuiListGetText(m_menulist, index), sizeof(str_buffer));
-         snprintf(path, sizeof(path), "%s\\%s", rgui->browser->current_dir.directory_path, str_buffer);
+         fill_pathname_join(path, rgui->browser->current_dir.directory_path, str_buffer, sizeof(path));
          filebrowser_set_root_and_ext(rgui->browser, "cg", path);
          uint64_t action = (1ULL << DEVICE_NAV_B);
          filebrowser_fetch_directory_entries(action);
@@ -1222,17 +1221,15 @@ HRESULT CRetroArchCoreBrowser::OnNotifyPress( HXUIOBJ hObjPressed, BOOL& bHandle
       wcstombs(str_buffer, (const wchar_t *)XuiListGetText(m_menulist, index), sizeof(str_buffer));
       if(path_file_exists(rgui->browser->list->elems[index].data))
       {
-         struct retro_variable var;
-         var.key = "core_path";
-         snprintf(var.value, sizeof(var.value), "%s\\%s", rgui->browser->current_dir.directory_path, str_buffer);
-         rarch_environment_cb(RETRO_ENVIRONMENT_SET_LIBRETRO_PATH, &var);
+         fill_pathname_join(path, rgui->browser->current_dir.directory_path, str_buffer, sizeof(path));
+         rarch_environment_cb(RETRO_ENVIRONMENT_SET_LIBRETRO_PATH, (void*)path);
 
          g_extern.lifecycle_mode_state |= (1ULL << MODE_EXITSPAWN);
          process_input_ret = -1;
       }
       else if (rgui->browser->list->elems[index].attr.b)
       {
-         snprintf(path, sizeof(path), "%s\\%s", rgui->browser->current_dir.directory_path, str_buffer);
+         fill_pathname_join(path, rgui->browser->current_dir.directory_path, str_buffer, sizeof(path));
          filebrowser_set_root_and_ext(rgui->browser, "xex|XEX", path);
          uint64_t action = (1ULL << DEVICE_NAV_B);
          filebrowser_fetch_directory_entries(action);
@@ -1446,7 +1443,7 @@ HRESULT CRetroArchMain::OnNotifyPress( HXUIOBJ hObjPressed,  int & bHandled )
    return 0;
 }
 
-rgui_handle_t *rgui_init (void)
+static void* rgui_init (void)
 {
    HRESULT hr;
 
@@ -1521,8 +1518,9 @@ rgui_handle_t *rgui_init (void)
    return rgui;
 }
 
-void rgui_free (rgui_handle_t *rgui)
+static void rgui_free(void *data)
 {
+   rgui_handle_t *rgui = (rgui_handle_t*)data;
    app.Uninit();
 }
 
@@ -1654,3 +1652,10 @@ bool menu_iterate_xui(void)
    XuiTimersRun();
    return true;
 }
+
+const menu_ctx_driver_t menu_ctx_rmenu_xui = {
+   NULL,
+   rgui_init,
+   rgui_free,
+   "rmenu_xui",
+};

@@ -105,7 +105,8 @@ enum SettingTypes
 
 // Helper view definitions
 @interface RAButtonGetter : NSObject<UIAlertViewDelegate>
-- (id)initWithSetting:(RASettingData*)setting fromTable:(UITableView*)table;
+- (id)initFromTable:(UITableView*)table;
+- (void)runForSetting:(RASettingData*)setting;
 @end
 
 @interface RASettingEnumerationList : UITableViewController
@@ -415,10 +416,14 @@ static void bluetooth_option_changed(RASettingData* setting)
    }
 
 
-   NSArray* bluetoothOptions = [NSArray arrayWithObjects:@"keyboard", @"Keyboard",
-                                                         @"icade", @"iCade Device",
-                                                         btstack_try_load() ? @"btstack" : nil, @"WiiMote/SixAxis (BTstack)",
-                                                         nil];
+   NSArray* bluetoothOptions = nil;
+   
+   if (!is_ios_7() && btstack_try_load())
+      bluetoothOptions = @[@"keyboard", @"Keyboard", @"icade", @"iCade Device", @"btstack", @"WiiMote/SixAxis (BTstack)"];
+   else if (!is_ios_7())
+      bluetoothOptions = @[@"keyboard", @"Keyboard", @"icade", @"iCade Device"];
+   else // if (is_ios_7())
+      bluetoothOptions = @[@"none", @"None", @"icade", @"iCade Device"];
 
    NSArray* settings = [NSArray arrayWithObjects:
       [NSArray arrayWithObjects:@"Frontend",
@@ -518,12 +523,17 @@ static void bluetooth_option_changed(RASettingData* setting)
 @end
 
 @implementation RASettingsSubList
+{
+   RAButtonGetter* _binder;
+}
+
 - (id)initWithSettings:(NSMutableArray*)values title:(NSString*)title
 {
    self = [super initWithStyle:UITableViewStyleGrouped];
    [self setTitle:title];
    
    self.sections = values;
+   _binder = [[RAButtonGetter alloc] initFromTable:self.tableView];
    return self;
 }
 
@@ -608,7 +618,7 @@ static void bluetooth_option_changed(RASettingData* setting)
          break;
          
       case ButtonSetting:
-         (void)[[RAButtonGetter alloc] initWithSetting:setting fromTable:(UITableView*)self.view];
+         [_binder runForSetting:setting];
          break;
          
       case GroupSetting:
@@ -784,7 +794,6 @@ static void bluetooth_option_changed(RASettingData* setting)
 
 @implementation RAButtonGetter
 {
-   RAButtonGetter* _me;
    RASettingData* _value;
    UIAlertView* _alert;
    UITableView* _view;
@@ -792,23 +801,36 @@ static void bluetooth_option_changed(RASettingData* setting)
    NSTimer* _btTimer;
 }
 
-- (id)initWithSetting:(RASettingData*)setting fromTable:(UITableView*)table
+- (id)initFromTable:(UITableView*)table
 {
    self = [super init];
 
-   _value = setting;
    _view = table;
-   _me = self;
 
    _alert = [[UIAlertView alloc] initWithTitle:@"RetroArch"
-                                 message:_value->label
+                                 message:@""
                                  delegate:self
                                  cancelButtonTitle:@"Cancel"
                                  otherButtonTitles:@"Clear Keyboard", @"Clear Joystick", @"Clear Axis", nil];
+
+   if (is_ios_7())
+      _alert.alertViewStyle = UIAlertViewStylePlainTextInput;
+
+   return self;
+}
+
+- (void)runForSetting:(RASettingData*)setting
+{
+   apple_input_reset_icade_buttons();
+
+   _value = setting;
+
+   _alert.message = _value->name;
    [_alert show];
    
    _btTimer = [NSTimer scheduledTimerWithTimeInterval:.05f target:self selector:@selector(checkInput) userInfo:nil repeats:YES];
-   return self;
+   
+   _finished = false;
 }
 
 - (void)finish
@@ -817,12 +839,13 @@ static void bluetooth_option_changed(RASettingData* setting)
    {
       _finished = true;
    
+      apple_input_reset_icade_buttons();
+   
       [_btTimer invalidate];
+      _btTimer = nil;
 
       [_alert dismissWithClickedButtonIndex:_alert.cancelButtonIndex animated:YES];
       [_view reloadData];
-   
-      _me = nil;
    }
 }
 

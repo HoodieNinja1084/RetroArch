@@ -21,6 +21,8 @@
 #include "../../config.h"
 #endif
 
+#include "../../performance.h"
+
 #ifdef HAVE_RGUI
 #define MENU_TEXTURE_FULLSCREEN false
 #else
@@ -157,6 +159,8 @@ typedef enum
    RGUI_SETTINGS_DISK_APPEND,
 #ifdef HAVE_SCREENSHOTS
    RGUI_SETTINGS_SCREENSHOT,
+   RGUI_SETTINGS_GPU_SCREENSHOT,
+   RGUI_SCREENSHOT_DIR_PATH,
 #endif
    RGUI_BROWSER_DIR_PATH,
    RGUI_SHADER_DIR_PATH,
@@ -276,11 +280,6 @@ extern rgui_handle_t *rgui;
 void menu_init(void);
 bool menu_iterate(void);
 void menu_free(void);
-
-int rgui_iterate(rgui_handle_t *rgui);
-
-rgui_handle_t *rgui_init(void);
-void rgui_free(rgui_handle_t *rgui);
 
 #ifndef HAVE_RMENU_XUI
 #if defined(HAVE_RGUI) || defined(HAVE_RMENU)

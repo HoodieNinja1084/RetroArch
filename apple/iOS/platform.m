@@ -31,8 +31,19 @@
 //#define HAVE_DEBUG_FILELOG
 void ios_set_bluetooth_mode(NSString* mode)
 {
+#ifndef __IPHONE_7_0 // iOS7 iCade Support
    apple_input_enable_icade([mode isEqualToString:@"icade"]);
    btstack_set_poweron([mode isEqualToString:@"btstack"]);
+#else
+   bool enabled = [mode isEqualToString:@"icade"];
+   apple_input_enable_icade(enabled);
+   [[RAGameView get] iOS7SetiCadeMode:enabled];
+#endif
+}
+
+bool is_ios_7()
+{
+   return [[UIDevice currentDevice].systemVersion compare:@"7.0" options:NSNumericSearch] != NSOrderedAscending;
 }
 
 // Input helpers: This is kept here because it needs objective-c
@@ -68,7 +79,7 @@ static void handle_touch_event(NSArray* touches)
    if ([[event allTouches] count])
       handle_touch_event(event.allTouches.allObjects);
    else if ([event respondsToSelector:@selector(_gsEvent)])
-   {
+   {   
       // Stolen from: http://nacho4d-nacho4d.blogspot.com/2012/01/catching-keyboard-events-in-ios.html
       uint8_t* eventMem = (uint8_t*)(void*)CFBridgingRetain([event performSelector:@selector(_gsEvent)]);
       int eventType = eventMem ? *(int*)&eventMem[8] : 0;
@@ -79,6 +90,33 @@ static void handle_touch_event(NSArray* touches)
       CFBridgingRelease(eventMem);
    }
 }
+
+#ifdef __IPHONE_7_0 // iOS7 iCade Support
+
+- (NSArray*)keyCommands
+{
+   static NSMutableArray* key_commands;
+
+   if (!key_commands)
+   {
+      key_commands = [NSMutableArray array];
+   
+      for (int i = 0; i != 26; i ++)
+      {
+         [key_commands addObject:[UIKeyCommand keyCommandWithInput:[NSString stringWithFormat:@"%c", 'a' + i]
+                                               modifierFlags:0 action:@selector(keyGotten:)]];
+      }
+   }
+
+   return key_commands;
+}
+
+- (void)keyGotten:(UIKeyCommand *)keyCommand
+{
+   apple_input_handle_key_event([keyCommand.input characterAtIndex:0] - 'a' + 4, true);
+}
+
+#endif
 
 @end
 
@@ -141,6 +179,19 @@ static void handle_touch_event(NSArray* touches)
 }
 
 #pragma mark Frontend Browsing Logic
+-(BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation
+{
+   NSString* filename = url.path.lastPathComponent;
+
+   NSError* error = nil;
+   [NSFileManager.defaultManager moveItemAtPath:url.path toPath:[self.documentsDirectory stringByAppendingPathComponent:filename] error:&error];
+   
+   if (error)
+      printf("%s\n", error.description.UTF8String);
+   
+   return true;
+}
+
 - (void)beginBrowsingForFile
 {
    NSString* rootPath = RetroArch_iOS.get.documentsDirectory;
@@ -196,6 +247,8 @@ static void handle_touch_event(NSArray* touches)
 // UINavigationController: Never animate when pushing onto, or popping, an RAGameView
 - (void)pushViewController:(UIViewController*)theView animated:(BOOL)animated
 {
+   apple_input_reset_icade_buttons();
+
    if ([theView respondsToSelector:@selector(isSettingsView)] && [(id)theView isSettingsView])
       _settingMenusInBackStack ++;
 
@@ -204,6 +257,8 @@ static void handle_touch_event(NSArray* touches)
 
 - (UIViewController*)popViewControllerAnimated:(BOOL)animated
 {
+   apple_input_reset_icade_buttons();
+
    if ([self.topViewController respondsToSelector:@selector(isSettingsView)] && [(id)self.topViewController isSettingsView])
       _settingMenusInBackStack --;
 
@@ -262,28 +317,28 @@ static void handle_touch_event(NSArray* touches)
    // Read load time settings
    config_file_t* conf = config_file_new([self.systemConfigPath UTF8String]);
 
+   // Get enabled orientations
+   static const struct { const char* setting; uint32_t orientation; } orientationSettings[4] =
+   {
+      { "ios_allow_portrait", UIInterfaceOrientationMaskPortrait },
+      { "ios_allow_portrait_upside_down", UIInterfaceOrientationMaskPortraitUpsideDown },
+      { "ios_allow_landscape_left", UIInterfaceOrientationMaskLandscapeLeft },
+      { "ios_allow_landscape_right", UIInterfaceOrientationMaskLandscapeRight }
+   };
+   
+   _enabledOrientations = 0;
+   
+   for (int i = 0; i < 4; i ++)
+   {
+      bool enabled = false;
+      bool found = conf && config_get_bool(conf, orientationSettings[i].setting, &enabled);
+         
+      if (!found || enabled)
+         _enabledOrientations |= orientationSettings[i].orientation;
+   }
+
    if (conf)
    {
-      // Get enabled orientations
-      static const struct { const char* setting; uint32_t orientation; } orientationSettings[4] =
-      {
-         { "ios_allow_portrait", UIInterfaceOrientationMaskPortrait },
-         { "ios_allow_portrait_upside_down", UIInterfaceOrientationMaskPortraitUpsideDown },
-         { "ios_allow_landscape_left", UIInterfaceOrientationMaskLandscapeLeft },
-         { "ios_allow_landscape_right", UIInterfaceOrientationMaskLandscapeRight }
-      };
-   
-      _enabledOrientations = 0;
-   
-      for (int i = 0; i < 4; i ++)
-      {
-         bool enabled = false;
-         bool found = config_get_bool(conf, orientationSettings[i].setting, &enabled);
-         
-         if (!found || enabled)
-            _enabledOrientations |= orientationSettings[i].orientation;
-      }
-      
       // Setup bluetooth mode
       ios_set_bluetooth_mode(objc_get_value_from_config(conf, @"ios_btmode", @"keyboard"));
 

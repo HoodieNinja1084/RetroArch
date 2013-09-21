@@ -90,8 +90,16 @@ static bool take_screenshot_viewport(void)
       return false;
    }
 
+   const char *screenshot_dir = g_settings.screenshot_directory;
+   char screenshot_path[PATH_MAX];
+   if (!*g_settings.screenshot_directory)
+   {
+      fill_pathname_basedir(screenshot_path, g_extern.basename, sizeof(screenshot_path));
+      screenshot_dir = screenshot_path;
+   }
+
    // Data read from viewport is in bottom-up order, suitable for BMP.
-   if (!screenshot_dump(g_settings.screenshot_directory,
+   if (!screenshot_dump(screenshot_dir,
          buffer,
          vp.width, vp.height, vp.width * 3, true))
    {
@@ -110,24 +118,45 @@ static bool take_screenshot_raw(void)
    unsigned height  = g_extern.frame_cache.height;
    int pitch        = g_extern.frame_cache.pitch;
 
+   const char *screenshot_dir = g_settings.screenshot_directory;
+   char screenshot_path[PATH_MAX];
+   if (!*g_settings.screenshot_directory)
+   {
+      fill_pathname_basedir(screenshot_path, g_extern.basename, sizeof(screenshot_path));
+      screenshot_dir = screenshot_path;
+   }
+
    // Negative pitch is needed as screenshot takes bottom-up,
    // but we use top-down.
-   return screenshot_dump(g_settings.screenshot_directory,
+   return screenshot_dump(screenshot_dir,
          (const uint8_t*)data + (height - 1) * pitch, 
          width, height, -pitch, false);
 }
 
 void rarch_take_screenshot(void)
 {
-   if (!(*g_settings.screenshot_directory))
+   if ((!*g_settings.screenshot_directory) && (!*g_extern.basename)) // No way to infer screenshot directory.
       return;
 
    bool ret = false;
+   bool viewport_read = (g_settings.video.gpu_screenshot ||
+         g_extern.system.hw_render_callback.context_type != RETRO_HW_CONTEXT_NONE) &&
+      driver.video->read_viewport &&
+      driver.video->viewport_info;
 
-   if ((g_settings.video.gpu_screenshot ||
-            g_extern.system.hw_render_callback.context_type != RETRO_HW_CONTEXT_NONE) &&
-         driver.video->read_viewport &&
-         driver.video->viewport_info)
+   // Clear out message queue to avoid OSD fonts to appear on screenshot.
+   msg_queue_clear(g_extern.msg_queue);
+
+   if (viewport_read)
+   {
+      // Avoid taking screenshot of GUI overlays.
+      if (driver.video_poke && driver.video_poke->set_texture_enable)
+         driver.video_poke->set_texture_enable(driver.video_data, false, false);
+      if (driver.video)
+         rarch_render_cached_frame();
+   }
+
+   if (viewport_read)
       ret = take_screenshot_viewport();
    else if (g_extern.frame_cache.data && (g_extern.frame_cache.data != RETRO_HW_FRAME_BUFFER_VALID))
       ret = take_screenshot_raw();
@@ -145,8 +174,6 @@ void rarch_take_screenshot(void)
       RARCH_WARN("Failed to take screenshot ...\n");
       msg = "Failed to take screenshot.";
    }
-
-   msg_queue_clear(g_extern.msg_queue);
 
    if (g_extern.is_paused)
    {
@@ -1838,11 +1865,6 @@ static void fill_pathnames(void)
 
       if (!(*g_extern.xml_name))
          fill_pathname_noext(g_extern.xml_name, g_extern.basename, ".xml", sizeof(g_extern.xml_name));
-
-#ifdef HAVE_SCREENSHOTS
-      if (!*g_settings.screenshot_directory)
-         fill_pathname_basedir(g_settings.screenshot_directory, g_extern.basename, sizeof(g_settings.screenshot_directory));
-#endif
    }
 }
 
@@ -1986,7 +2008,7 @@ static bool check_fullscreen(void)
    bool toggle = pressed && !was_pressed;
    if (toggle)
    {
-      g_settings.video.fullscreen = !g_settings.video.fullscreen;
+      settings_set(1ULL << S_VIDEO_FULLSCREEN_TOGGLE);
       rarch_set_fullscreen(g_settings.video.fullscreen);
    }
 
