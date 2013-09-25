@@ -170,6 +170,7 @@ struct settings
       bool aspect_ratio_auto;
       bool scale_integer;
       unsigned aspect_ratio_idx;
+      unsigned rotation;
 
       char shader_path[PATH_MAX];
       bool shader_enable;
@@ -227,6 +228,8 @@ struct settings
       // Set by autoconfiguration in joypad_autoconfig_dir. Does not override main binds.
       struct retro_keybind autoconf_binds[MAX_PLAYERS][RARCH_BIND_LIST_END];
       bool autoconfigured[MAX_PLAYERS];
+
+      unsigned libretro_device[MAX_PLAYERS];
 
       float axis_threshold;
       int joypad_map[MAX_PLAYERS];
@@ -320,8 +323,6 @@ struct global
    bool video_active;
    bool force_fullscreen;
 
-   unsigned libretro_device[MAX_PLAYERS];
-
    bool rom_file_temporary;
    char last_rom[PATH_MAX];
    enum rarch_game_type game_type;
@@ -332,6 +333,7 @@ struct global
    char sufami_rom_path[2][PATH_MAX];
    bool has_set_save_path;
    bool has_set_state_path;
+   bool has_set_libretro_device[MAX_PLAYERS];
 
 #ifdef HAVE_RMENU
    char menu_texture_path[PATH_MAX];
@@ -586,7 +588,6 @@ struct global
             rarch_viewport_t custom_vp;
          } viewports;
 
-         unsigned orientation;
          unsigned gamma_correction;
          unsigned char flicker_filter_index;
          unsigned char soft_filter_index;
