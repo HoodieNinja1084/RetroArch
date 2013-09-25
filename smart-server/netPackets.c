@@ -25,33 +25,17 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
       {
          case 'c':
          {
-            uint8_t value = (uint8_t)va_arg(ap, uint32_t);
-            *buffer++ =  (value) & 0xFF;
+            serialize_uint8(&buffer, (uint8_t)va_arg(ap, uint32_t));
             break;
          }
          case 'i':
          {
-            uint32_t value = va_arg(ap, uint32_t);
-            *buffer++ = (value >> 24) & 0xFF;
-            *buffer++ = (value >> 14) & 0xFF;
-            *buffer++ = (value >> 8) & 0xFF;
-            *buffer++ = (value) & 0xFF;
+            serialize_uint32(&buffer, va_arg(ap, uint32_t));
             break;
          }
          case 's':
          {
-            char* value = va_arg(ap, char*);
-            uint32_t len = strlen(value);
-
-            //append string lenght
-            *buffer++ = (len >> 24) & 0xFF;
-            *buffer++ = (len >> 14) & 0xFF;
-            *buffer++ = (len >> 8) & 0xFF;
-            *buffer++ = (len) & 0xFF;
-
-            // now string
-            sprintf((char*)buffer, "%s", value);
-            buffer += strlen(value);
+            serialize_string(&buffer, va_arg(ap, char*));
             break;
          }
       }
@@ -59,10 +43,35 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
    }
 }
 
+unsigned char* serialize_uint8(unsigned char** buffer, uint8_t value)
+{
+   **buffer++ = (value) & 0xFF;
+   return (*buffer);
+}
+
+unsigned char* serialize_uint32(unsigned char** buffer, uint32_t value)
+{
+   **buffer++ = (value >> 24) & 0xFF;
+   **buffer++ = (value >> 14) & 0xFF;
+   **buffer++ = (value >> 8) & 0xFF;
+   **buffer++ = (value) & 0xFF;
+   return (*buffer);
+}
+
+unsigned char* serialize_string(unsigned char** buffer, char* value)
+{
+   *buffer = serialize_uint32(buffer, strlen(value));
+
+   sprintf((char*)*buffer, "%s", value);
+   *buffer += strlen(value);
+
+   return (*buffer);
+}
+
 unsigned char* deserialize_uint8(unsigned char** data, uint8_t* val)
 {
    *val = *data[0];
-   *data += sizeof(uint8_t); // shift pointer from 1 bytes (size of int on most of systems)
+   *data += sizeof(uint8_t);
 
    return (*data);
 }
@@ -70,7 +79,7 @@ unsigned char* deserialize_uint8(unsigned char** data, uint8_t* val)
 unsigned char* deserialize_uint32(unsigned char** data, uint32_t* val)
 {
    *val = ((*data)[0] << 24) | ((*data)[1] << 16) | ((*data)[2] << 8) | (*data)[3];
-   *data += sizeof(uint32_t); // shift pointer from 4 bytes (size of int on most of systems)
+   *data += sizeof(uint32_t);
 
    return (*data);
 }
