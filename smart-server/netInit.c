@@ -27,7 +27,7 @@ void init_server(network_t* netInfo)
    printf("Server is listenning on TCP port %d and UDP port %d\n", htons(netInfo->serverTCP.sin_port), htons(netInfo->serverUDP.sin_port));
 }
 
-client_t* new_client(network_t* netInfo)
+uint32_t new_client(network_t* netInfo, uint8_t* maxsocket)
 {
    struct sockaddr_in csin;
    size_t csinsize = sizeof(csin);
@@ -43,5 +43,10 @@ client_t* new_client(network_t* netInfo)
 
    printf("New client (%s) connected.\n", client->ip);
 
-   return (client);
+   netInfo->clients[netInfo->nbClients] = client;
+   netInfo->nbClients++;
+
+   *maxsocket = client->socket > *maxsocket ? client->socket : *maxsocket;
+
+   return (client->socket);
 }

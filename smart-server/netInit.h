@@ -6,6 +6,6 @@
 
 void launch_server(void);
 void init_server(network_t*);
-client_t* new_client(network_t*);
+uint32_t new_client(network_t*, uint8_t*);
 
 #endif /* !__INIT_H__ */

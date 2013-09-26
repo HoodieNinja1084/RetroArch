@@ -16,24 +16,15 @@ void *launch_smartserver(void* args)
       for (i = 0; i < netInfo.nbClients; i++)
          FD_SET(netInfo.clients[i]->socket, &readfs);
 
-      if (netInfo.nbClients < MAX_CLIENT)
-      {
-         packet_t pkt = build_packet(SMSG_WHO_IS_HERE);
-         sendto(netInfo.sSocketUDP, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverUDP, sizeof(netInfo.serverUDP));
-      }
+      send_broadcast_packet();
 
       struct timeval timeout = {3, 0};
       xselect(maxsocket + 1, &readfs, NULL, NULL, &timeout);
 
       if (FD_ISSET(netInfo.sSocketTCP, &readfs))
       {
-         // new client
-         netInfo.clients[netInfo.nbClients] = new_client(&netInfo);
-
-         uint32_t csock = netInfo.clients[netInfo.nbClients]->socket;
+         uint32_t csock = new_client(&netInfo, &maxsocket);
          FD_SET(csock, &readfs);
-         maxsocket = csock > maxsocket ? csock : maxsocket;
-         netInfo.nbClients++;
       }
       else
       {
@@ -50,25 +41,21 @@ void *launch_smartserver(void* args)
                ret = recv(client->socket, &pkt, sizeof(pkt), 0);
                if (ret == 0)
                {
-                 printf("Client %s disconnected.\n", client->ip);
-                 close(client->socket);
-                 free(client);
-                 client = NULL;
-                 netInfo.nbClients--;
-                 break;
+                  disconnect_client(client);
+                  break;
                }
 
                if (pkt.opcode >= OPCODE_MAXNUM)
                {
-                 printf("Unknow opcode 0x%02x, skipping...\n", pkt.opcode);
-                 break;
+                  printf("Unknow opcode 0x%02x, skipping...\n", pkt.opcode);
+                  break;
                }
 
                struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
                if ((*opcode.handler) == NULL)
                {
-                 printf("No handler defined for opcode %s(0x%02x), skipping...\n", opcode.name, pkt.opcode);
-                 break;
+                  printf("No handler defined for opcode %s(0x%02x), skipping...\n", opcode.name, pkt.opcode);
+                  break;
                }
 
                printf("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
@@ -81,4 +68,22 @@ void *launch_smartserver(void* args)
    }
 
    return (NULL);
+}
+
+void send_broadcast_packet(void)
+{
+   if (netInfo.nbClients < MAX_CLIENT)
+   {
+      packet_t pkt = build_packet(SMSG_WHO_IS_HERE);
+      sendto(netInfo.sSocketUDP, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverUDP, sizeof(netInfo.serverUDP));
+   }
+}
+
+void disconnect_client(client_t* client)
+{
+   printf("Client %s disconnected.\n", client->ip);
+   close(client->socket);
+   free(client);
+   client = NULL;
+   netInfo.nbClients--;
 }
