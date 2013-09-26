@@ -27,6 +27,17 @@ void init_server(network_t* netInfo)
    printf("Server is listenning on TCP port %d and UDP port %d\n", htons(netInfo->serverTCP.sin_port), htons(netInfo->serverUDP.sin_port));
 }
 
+int32_t find_free_idx()
+{
+   uint8_t i;
+   for (i = 0; i < MAX_CLIENT; i++)
+   {
+      if (netInfo->clients[i] == NULL)
+         return i;
+   }
+   return -1;
+}
+
 uint32_t new_client(network_t* netInfo, uint8_t* maxsocket)
 {
    struct sockaddr_in csin;
@@ -43,7 +54,11 @@ uint32_t new_client(network_t* netInfo, uint8_t* maxsocket)
 
    printf("New client (%s) connected.\n", client->ip);
 
-   netInfo->clients[netInfo->nbClients] = client;
+   int32_t idx = find_free_idx();
+   if (idx != -1)
+      netInfo->clients[idx] = client;
+   else
+      netInfo->clients[netInfo->nbClients] = client;
    netInfo->nbClients++;
 
    *maxsocket = client->socket > *maxsocket ? client->socket : *maxsocket;
