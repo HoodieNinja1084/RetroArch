@@ -9,5 +9,7 @@
 network_t netInfo;
 
 void *launch_smartserver(void*);
+void send_broadcast_packet(void);
+void disconnect_client(client_t*);
 
 #endif
