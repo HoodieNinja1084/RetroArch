@@ -25,17 +25,17 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
       {
          case 'c':
          {
-            serialize_uint8(buffer, (uint8_t)va_arg(ap, uint32_t));
+            buffer = serialize_uint8(buffer, (uint8_t)va_arg(ap, uint32_t));
             break;
          }
          case 'i':
          {
-            serialize_uint32(buffer, va_arg(ap, uint32_t));
+            buffer = serialize_uint32(buffer, va_arg(ap, uint32_t));
             break;
          }
          case 's':
          {
-            serialize_string(buffer, va_arg(ap, char*));
+            buffer = serialize_string(buffer, va_arg(ap, char*));
             break;
          }
       }
@@ -45,16 +45,16 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
 
 unsigned char* serialize_uint8(unsigned char* buffer, uint8_t value)
 {
-   *buffer++ = (value) & 0xFF;
+   *buffer++ = value;
    return (buffer);
 }
 
 unsigned char* serialize_uint32(unsigned char* buffer, uint32_t value)
 {
-   *buffer++ = (value >> 24) & 0xFF;
-   *buffer++ = (value >> 14) & 0xFF;
-   *buffer++ = (value >> 8) & 0xFF;
-   *buffer++ = (value) & 0xFF;
+   *buffer++ = (value >> 24);
+   *buffer++ = (value >> 14);
+   *buffer++ = (value >> 8);
+   *buffer++ = value;
    return (buffer);
 }
 
