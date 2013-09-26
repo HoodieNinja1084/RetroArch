@@ -14,11 +14,11 @@ typedef struct packet
 
 packet_t build_packet(uint8_t, ...);
 void serialize(va_list, const char*, unsigned char*);
-unsigned char* serialize_uint8(unsigned char**, uint8_t);
-unsigned char* serialize_uint32(unsigned char**, uint32_t);
-unsigned char* serialize_string(unsigned char**, char*);
-unsigned char* deserialize_uint8(unsigned char**, uint8_t*);
-unsigned char* deserialize_uint32(unsigned char**, uint32_t*);
-unsigned char* deserialize_string(unsigned char**, char str[BUFFER_SIZE]);
+unsigned char* serialize_uint8(unsigned char*, uint8_t);
+unsigned char* serialize_uint32(unsigned char*, uint32_t);
+unsigned char* serialize_string(unsigned char*, char*);
+unsigned char* deserialize_uint8(unsigned char*, uint8_t*);
+unsigned char* deserialize_uint32(unsigned char*, uint32_t*);
+unsigned char* deserialize_string(unsigned char*, char str[BUFFER_SIZE]);
 
 #endif /* !__NETPACKETS_H__ */
