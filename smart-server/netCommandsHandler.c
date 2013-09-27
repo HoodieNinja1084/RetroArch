@@ -7,13 +7,6 @@ void handle_me_opcode(client_t* client, unsigned char* data)
    printf("%s set informations: name '%s' type %u\n", client->ip, client->name, client->type);
 }
 
-void handle_info_opcode(client_t* client, unsigned char* data)
-{
-  // nyi
-  // We have to find a way
-  printf("This opcode isn't handled yet\n");
-}
-
 // For every handle_button_* we call the associated function of RetroArch
 void handle_button_b_opcode(client_t* client, unsigned char* data)
 {
