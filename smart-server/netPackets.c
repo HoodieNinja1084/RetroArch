@@ -28,6 +28,11 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
             buffer = serialize_uint8(buffer, (uint8_t)va_arg(ap, uint32_t));
             break;
          }
+         case 'h':
+         {
+            buffer = serialize_uint16(buffer, (uint16_t)va_arg(ap, uint32_t));
+            break;
+         }
          case 'i':
          {
             buffer = serialize_uint32(buffer, va_arg(ap, uint32_t));
@@ -45,6 +50,13 @@ void serialize(va_list ap, const char* format, unsigned char* buffer)
 
 unsigned char* serialize_uint8(unsigned char* buffer, uint8_t value)
 {
+   *buffer++ = value;
+   return (buffer);
+}
+
+unsigned char* serialize_uint16(unsigned char* buffer, uint16_t value)
+{
+   *buffer++ = (value >> 8);
    *buffer++ = value;
    return (buffer);
 }
@@ -72,6 +84,14 @@ unsigned char* deserialize_uint8(unsigned char* data, uint8_t* val)
 {
    *val = data[0];
    data += sizeof(uint8_t);
+
+   return (data);
+}
+
+unsigned char* deserialize_uint16(unsigned char* data, uint16_t* val)
+{
+   *val = (data[0] << 8) | data[1];
+   data += sizeof(uint16_t);
 
    return (data);
 }

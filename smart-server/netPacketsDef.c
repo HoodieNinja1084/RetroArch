@@ -3,8 +3,9 @@
 
 /*
 Format:
-  c = char
-  i = integer
+  c = char (int8)
+  h = int16
+  i = integer32
   s = string
 */
 
