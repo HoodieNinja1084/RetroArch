@@ -14,6 +14,8 @@ void *launch_smartserver(void* args)
       FD_ZERO(&readfs);
       FD_SET(netInfo.sSocketTCP, &readfs);
 
+      test_still_connected();
+
       uint8_t i;
       for (i = 0; i < netInfo.nbClients; i++)
          FD_SET(netInfo.clients[i]->socket, &readfs);
@@ -92,4 +94,19 @@ void disconnect_client(client_t* client)
    free(client);
    client = NULL;
    netInfo.nbClients--;
+}
+
+void test_still_connected()
+{
+   uint8_t i;
+   for (i = 0; i < netInfo.nbClients; i++)
+   {
+      ssize_t r;
+      packet_t pkt = build_packet(SMSG_NULL);
+      r = sendto(netInfo.clients[i]->socket, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverTCP, sizeof(netInfo.serverTCP));
+      if (r == -1)
+      {
+         disconnect_client(netInfo.clients[i]);
+      }
+   }
 }
