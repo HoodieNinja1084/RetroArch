@@ -111,7 +111,7 @@ unsigned char* deserialize_string(unsigned char* data, char* str)
    data = deserialize_uint32(data, &len);
 
    strncpy(str, (char*)data, len - 1);
-   str[len] = '\0';
+   str[len+1] = '\0';
    data += len;
 
    return (data);
