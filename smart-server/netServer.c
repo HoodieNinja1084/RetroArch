@@ -96,7 +96,7 @@ void disconnect_client(client_t* client)
    netInfo.nbClients--;
 }
 
-void test_still_connected()
+void test_still_connected(void)
 {
    uint8_t i;
    for (i = 0; i < netInfo.nbClients; i++)

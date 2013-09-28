@@ -4,6 +4,7 @@
 #include "netSharedDefines.h"
 
 enum Opcode {
+  SMSG_NULL = 0x00,
   SMSG_WHO_IS_HERE	= 0x01,
   CMSG_ME		= 0x02,
   SMSG_INFO		= 0x03,
