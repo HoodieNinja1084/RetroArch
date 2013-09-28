@@ -6,6 +6,8 @@ void *launch_smartserver(void* args)
 
    init_server(&netInfo);
 
+   send_broadcast_packet();
+
    uint8_t maxsocket = netInfo.sSocketUDP;
    while (1)
    {
@@ -16,10 +18,14 @@ void *launch_smartserver(void* args)
       for (i = 0; i < netInfo.nbClients; i++)
          FD_SET(netInfo.clients[i]->socket, &readfs);
 
-      send_broadcast_packet();
-
+      int ret;
       struct timeval timeout = {3, 0};
-      xselect(maxsocket + 1, &readfs, NULL, NULL, &timeout);
+      ret = xselect(maxsocket + 1, &readfs, NULL, NULL, &timeout);
+      if (ret == 0)
+      {
+         // timeout reached
+         send_broadcast_packet();
+      }
 
       if (FD_ISSET(netInfo.sSocketTCP, &readfs))
       {
@@ -34,12 +40,12 @@ void *launch_smartserver(void* args)
             // find which one
             if (FD_ISSET(netInfo.clients[i]->socket, &readfs))
             {
-               ssize_t ret;
+               ssize_t r;
                packet_t pkt;
                client_t* client = netInfo.clients[i];
 
-               ret = recv(client->socket, &pkt, sizeof(pkt), 0);
-               if (ret == 0)
+               r = recv(client->socket, &pkt, sizeof(pkt), 0);
+               if (r == 0)
                {
                   disconnect_client(client);
                   break;
