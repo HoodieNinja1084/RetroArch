@@ -108,6 +108,7 @@ unsigned char* deserialize_string(unsigned char* data, char* str)
 {
    uint32_t len;
 
+   memset(str, '\0', sizeof(str));
    data = deserialize_uint32(data, &len);
 
    strncpy(str, (char*)data, len);
