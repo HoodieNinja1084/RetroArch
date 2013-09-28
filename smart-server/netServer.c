@@ -19,7 +19,7 @@ void *launch_smartserver(void* args)
          FD_SET(netInfo.clients[i]->socket, &readfs);
 
       int ret;
-      struct timeval timeout = {3, 0};
+      struct timeval timeout = {5, 0};
       ret = xselect(maxsocket + 1, &readfs, NULL, NULL, &timeout);
       if (ret == 0)
       {
