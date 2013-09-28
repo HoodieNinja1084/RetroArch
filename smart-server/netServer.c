@@ -47,18 +47,18 @@ void *launch_smartserver(void* args)
 
                if (pkt.opcode >= OPCODE_MAXNUM)
                {
-                  RARCH_ERR("Unknow opcode 0x%02x, skipping...\n", pkt.opcode);
+                  RARCH_ERR("Smart-Server: Unknow opcode 0x%02x, skipping...\n", pkt.opcode);
                   break;
                }
 
                struct s_OpcodeHandler opcode = opcodeTable[pkt.opcode];
                if ((*opcode.handler) == NULL)
                {
-                  RARCH_ERR("No handler defined for opcode %s(0x%02x), skipping...\n", opcode.name, pkt.opcode);
+                  RARCH_WARN("Smart-Server: No handler defined for opcode %s(0x%02x), skipping...\n", opcode.name, pkt.opcode);
                   break;
                }
 
-               RARCH_LOG("Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
+               RARCH_LOG("Smart-Server: Receiving opcode %s(0x%02x) from %s\n", opcode.name, pkt.opcode, client->ip);
 
                // call appropriate handler
                (*opcode.handler)(client, pkt.data);
@@ -81,7 +81,7 @@ void send_broadcast_packet(void)
 
 void disconnect_client(client_t* client)
 {
-   RARCH_LOG("Client %s disconnected.\n", client->ip);
+   RARCH_LOG("Smart-Server: Client %s disconnected.\n", client->ip);
    close(client->socket);
    free(client);
    client = NULL;
