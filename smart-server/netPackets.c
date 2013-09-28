@@ -64,7 +64,7 @@ unsigned char* serialize_uint16(unsigned char* buffer, uint16_t value)
 unsigned char* serialize_uint32(unsigned char* buffer, uint32_t value)
 {
    *buffer++ = (value >> 24);
-   *buffer++ = (value >> 14);
+   *buffer++ = (value >> 16);
    *buffer++ = (value >> 8);
    *buffer++ = value;
    return (buffer);
