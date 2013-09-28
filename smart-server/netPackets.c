@@ -5,7 +5,7 @@ packet_t build_packet(uint8_t opcode, ...)
    packet_t packet;
    va_list ap;
 
-   printf("Sending packet %s(0x%02x)\n", opcodeTable[opcode].name, opcode);
+   RARCH_LOG("Sending packet %s(0x%02x)\n", opcodeTable[opcode].name, opcode);
 
    va_start(ap, opcode);
    packet.opcode = opcode;

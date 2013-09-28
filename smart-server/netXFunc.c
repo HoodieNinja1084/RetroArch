@@ -6,7 +6,7 @@ int xsocket(int domain, int type, int protocol)
 
    if ((sSocket = socket(domain, type, protocol)) == -1)
    {
-      printf("Error on socket()\n");
+      RARCH_ERR("Error on socket()\n");
       exit(EXIT_FAILURE);
    }
 
@@ -17,7 +17,7 @@ int xbind(int socket, const struct sockaddr *address, socklen_t address_len)
 {
    if (bind(socket, address, address_len) == -1)
    {
-      printf("Error on bind()\n");
+      RARCH_ERR("Error on bind()\n");
       close(socket);
       exit(EXIT_FAILURE);
    }
@@ -29,7 +29,7 @@ int xlisten(int socket, int backlog)
 {
    if (listen(socket, backlog) == -1)
    {
-      printf("Error on listen\n");
+      RARCH_ERR("Error on listen\n");
       close(socket);
       exit(EXIT_FAILURE);
    }
@@ -43,7 +43,7 @@ int xaccept(int socket, struct sockaddr * address, socklen_t * address_len)
 
    if ((cSocket = accept(socket, address, address_len)) < 0)
    {
-      printf("Error on accept()\n");
+      RARCH_ERR("Error on accept()\n");
       exit(EXIT_FAILURE);
    }
 
@@ -57,7 +57,7 @@ int xselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, stru
    ret = select(nfds, readfds, writefds, exceptfds, timeout);
    if (ret == -1)
    {
-      printf("Error on select()\n");
+      RARCH_ERR("Error on select()\n");
       exit(EXIT_FAILURE);
    }
 
