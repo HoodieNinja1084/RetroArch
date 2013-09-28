@@ -23,5 +23,7 @@ void handle_button_l2_opcode(client_t*, unsigned char*);
 void handle_button_r2_opcode(client_t*, unsigned char*);
 void handle_button_l3_opcode(client_t*, unsigned char*);
 void handle_button_r3_opcode(client_t*, unsigned char*);
+void handle_quit_game(client_t*, unsigned char*);
+void handle_disconnect_opcode(client_t*, unsigned char*);
 
 #endif /* !__NETCOMMANDSHANDLER_H__ */

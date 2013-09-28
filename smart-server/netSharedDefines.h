@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "general.h"
 #include "netXFunc.h"
 
 # define TCP_PORT 3000
