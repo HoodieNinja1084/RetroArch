@@ -33,5 +33,6 @@ struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM] = {
    {"CMSG_BUTTON_L3",      "c",  &handle_button_l3_opcode},
    {"CMSG_BUTTON_R3",      "c",  &handle_button_r3_opcode},
    {"SMSG_QUIT_GAME",      "",   NULL},
+   {"CMSG_QUIT_GAME",      "",   &handle_quit_game},
    {"CMSG_DISCONNECT",     "",   &handle_disconnect_opcode}
 };

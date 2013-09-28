@@ -88,6 +88,11 @@ void handle_button_r3_opcode(client_t* client, unsigned char* data)
   RARCH_LOG("This opcode isn't handled yet\n");
 }
 
+void handle_quit_game(client_t* client, unsigned char* data)
+{
+  RARCH_LOG("This opcode isn't handled yet\n");
+}
+
 void handle_disconnect_opcode(client_t* client, unsigned char* data)
 {
   RARCH_LOG("This opcode isn't handled yet\n");
