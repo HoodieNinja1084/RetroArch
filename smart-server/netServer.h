@@ -9,6 +9,7 @@
 network_t netInfo;
 
 void *launch_smartserver(void*);
+uint8_t find_max_socket(network_t*);
 void send_broadcast_packet(void);
 
 #endif

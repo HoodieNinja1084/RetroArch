@@ -8,11 +8,13 @@ void *launch_smartserver(void* args)
 
    send_broadcast_packet();
 
-   uint8_t maxsocket = netInfo.sSocketUDP;
+   uint8_t maxsocket;
    while (1)
    {
       FD_ZERO(&readfs);
       FD_SET(netInfo.sSocketTCP, &readfs);
+
+      maxsocket = find_max_socket(&netInfo);
 
       uint8_t i;
       for (i = 0; i < MAX_CLIENT; i++)
@@ -77,6 +79,19 @@ void *launch_smartserver(void* args)
    }
 
    return (NULL);
+}
+
+uint8_t find_max_socket(network_t* netInfo)
+{
+   uint8_t max = netInfo->sSocketUDP;
+
+   uint8_t i;
+   for (i = 0; i < MAX_CLIENT; i++)
+   {
+      if (netInfo->clients[i] && (netInfo->clients[i]->socket > max))
+         max = netInfo->clients[i]->socket;
+   }
+   return max;
 }
 
 void send_broadcast_packet(void)
