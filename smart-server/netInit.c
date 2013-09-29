@@ -12,6 +12,23 @@ void init_server(network_t* netInfo)
    xbind(netInfo->sSocketTCP, (const struct sockaddr *)&netInfo->serverTCP, sizeof(netInfo->serverTCP));
    xlisten(netInfo->sSocketTCP, MAX_CLIENT);
 
+   // active keepalive
+   optval = 1;
+   if (setsockopt(netInfo->sSocketTCP, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0)
+      RARCH_ERR("Smart-Server: setsockopt SOL_SOCKET SO_KEEPALIVE error");
+
+   optval = 15;
+   if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPIDLE, &optval, sizeof(optval)) < 0)
+      RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPIDLE error");
+
+   optval = 3;
+   if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPCNT, &optval, sizeof(optval)) < 0)
+      RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPCNT error");
+
+   optval = 10;
+   if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPINTVL, &optval, sizeof(optval)) < 0)
+      RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPINTVL error");
+
    netInfo->sSocketUDP = xsocket(AF_INET, SOCK_DGRAM, 0);
    optval = 1;
    if (setsockopt(netInfo->sSocketUDP, SOL_SOCKET, SO_BROADCAST, (void*)&optval, sizeof(optval)) < 0)
@@ -19,25 +36,6 @@ void init_server(network_t* netInfo)
       RARCH_ERR("Smart-Server: setsockopt SO_BROADCAST error");
       exit(EXIT_FAILURE);
    }
-
-   // active keepalive
-   /*
-   optval = 1;
-   if (setsockopt(netInfo->sSocketTCP, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0)
-      RARCH_ERR("Smart-Server: setsockopt SOL_SOCKET SO_KEEPALIVE error");
-
-   optval = 30;
-   if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPIDLE, &optval, sizeof(optval)) < 0)
-      RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPIDLE error");
-
-   optval = 2;
-   if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPCNT, &optval, sizeof(optval)) < 0)
-      RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPCNT error");
-
-   optval = 10;
-   if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPINTVL, &optval, sizeof(optval)) < 0)
-      RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPINTVL error");
-   */
 
    netInfo->serverUDP.sin_addr.s_addr = htonl(INADDR_BROADCAST);
    netInfo->serverUDP.sin_port = htons(UDP_PORT);
