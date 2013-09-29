@@ -14,11 +14,12 @@ void *launch_smartserver(void* args)
       FD_ZERO(&readfs);
       FD_SET(netInfo.sSocketTCP, &readfs);
 
-      test_still_connected();
-
       uint8_t i;
-      for (i = 0; i < netInfo.nbClients; i++)
-         FD_SET(netInfo.clients[i]->socket, &readfs);
+      for (i = 0; i < MAX_CLIENT; i++)
+      {
+         if (netInfo.clients[i] && netInfo.clients[i]->isActive == 1)
+            FD_SET(netInfo.clients[i]->socket, &readfs);
+      }
 
       int ret;
       struct timeval timeout = {5, 0};
@@ -37,10 +38,10 @@ void *launch_smartserver(void* args)
       else
       {
          // a client is talking
-         for (i = 0; i < netInfo.nbClients; i++)
+         for (i = 0; i < MAX_CLIENT; i++)
          {
             // find which one
-            if (FD_ISSET(netInfo.clients[i]->socket, &readfs))
+            if (netInfo.clients[i] && FD_ISSET(netInfo.clients[i]->socket, &readfs))
             {
                ssize_t r;
                packet_t pkt;
@@ -49,7 +50,7 @@ void *launch_smartserver(void* args)
                r = recv(client->socket, &pkt, sizeof(pkt), 0);
                if (r == 0)
                {
-                  disconnect_client(client);
+                  disconnect_client(&netInfo, client, &readfs);
                   break;
                }
 
@@ -80,33 +81,10 @@ void *launch_smartserver(void* args)
 
 void send_broadcast_packet(void)
 {
-   if (netInfo.nbClients < MAX_CLIENT)
+   if (netInfo.nbActiveClients < MAX_CLIENT)
    {
       packet_t pkt = build_packet(SMSG_WHO_IS_HERE);
       sendto(netInfo.sSocketUDP, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverUDP, sizeof(netInfo.serverUDP));
    }
 }
 
-void disconnect_client(client_t* client)
-{
-   RARCH_LOG("Smart-Server: Client %s disconnected.\n", client->ip);
-   close(client->socket);
-   free(client);
-   client = NULL;
-   netInfo.nbClients--;
-}
-
-void test_still_connected(void)
-{
-   uint8_t i;
-   for (i = 0; i < netInfo.nbClients; i++)
-   {
-      ssize_t r;
-      packet_t pkt = build_packet(SMSG_NULL);
-      r = sendto(netInfo.clients[i]->socket, &pkt, sizeof(pkt), 0, (struct sockaddr *)&netInfo.serverTCP, sizeof(netInfo.serverTCP));
-      if (r == -1)
-      {
-         disconnect_client(netInfo.clients[i]);
-      }
-   }
-}

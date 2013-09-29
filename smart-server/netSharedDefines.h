@@ -21,6 +21,7 @@
 # define BUFFER_SIZE 256
 typedef struct client
 {
+  uint8_t isActive;
   uint8_t type;
   uint32_t socket;
   char name[BUFFER_SIZE];
@@ -35,7 +36,7 @@ typedef struct network
   struct sockaddr_in serverTCP;
   struct sockaddr_in serverUDP; 
   client_t* clients[MAX_CLIENT];
-  uint32_t nbClients;
+  uint32_t nbActiveClients;
 } network_t;
 
 #endif /* !__SHARED_DEFINES_H__ */
