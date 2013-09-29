@@ -59,7 +59,7 @@ int32_t find_free_idx(network_t* netInfo)
    return -1;
 }
 
-uint32_t new_client(network_t* netInfo, uint8_t* maxsocket)
+uint32_t new_client(network_t* netInfo)
 {
    struct sockaddr_in csin;
    size_t csinsize = sizeof(csin);
@@ -78,12 +78,13 @@ uint32_t new_client(network_t* netInfo, uint8_t* maxsocket)
 
    int32_t idx = find_free_idx(netInfo);
    if (idx != -1)
+   {
+      free(netInfo->clients[idx]);
       netInfo->clients[idx] = client;
+   }
    else
       netInfo->clients[netInfo->nbActiveClients] = client;
    netInfo->nbActiveClients++;
-
-   *maxsocket = client->socket > *maxsocket ? client->socket : *maxsocket;
 
    return (client->socket);
 }
@@ -93,5 +94,6 @@ void disconnect_client(network_t* netInfo, client_t* client, fd_set* readfs)
    RARCH_LOG("Smart-Server: Client %s disconnected.\n", client->ip);
    FD_CLR(client->socket, readfs);
    close(client->socket);
+   client->isActive = 0;
    netInfo->nbActiveClients--;
 }

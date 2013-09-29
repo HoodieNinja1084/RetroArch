@@ -7,14 +7,10 @@ void *launch_smartserver(void* args)
    init_server(&netInfo);
 
    send_broadcast_packet();
-
-   uint8_t maxsocket;
    while (1)
    {
       FD_ZERO(&readfs);
       FD_SET(netInfo.sSocketTCP, &readfs);
-
-      maxsocket = find_max_socket(&netInfo);
 
       uint8_t i;
       for (i = 0; i < MAX_CLIENT; i++)
@@ -25,7 +21,7 @@ void *launch_smartserver(void* args)
 
       int ret;
       struct timeval timeout = {5, 0};
-      ret = xselect(maxsocket + 1, &readfs, NULL, NULL, &timeout);
+      ret = xselect(FD_SETSIZE, &readfs, NULL, NULL, &timeout);
       if (ret == 0)
       {
          // timeout reached
@@ -34,7 +30,7 @@ void *launch_smartserver(void* args)
 
       if (FD_ISSET(netInfo.sSocketTCP, &readfs))
       {
-         uint32_t csock = new_client(&netInfo, &maxsocket);
+         uint32_t csock = new_client(&netInfo);
          FD_SET(csock, &readfs);
       }
       else
@@ -79,19 +75,6 @@ void *launch_smartserver(void* args)
    }
 
    return (NULL);
-}
-
-uint8_t find_max_socket(network_t* netInfo)
-{
-   uint8_t max = netInfo->sSocketUDP;
-
-   uint8_t i;
-   for (i = 0; i < MAX_CLIENT; i++)
-   {
-      if (netInfo->clients[i] && (netInfo->clients[i]->socket > max))
-         max = netInfo->clients[i]->socket;
-   }
-   return max;
 }
 
 void send_broadcast_packet(void)
