@@ -1,15 +1,5 @@
 #include "netServer.h"
 
-int16_t is_button_pressed(uint8_t player, uint8_t key)
-{
-   if (buttonTable[key].pressed == 1)
-   {
-      buttonTable[key].pressed = 0;
-      return (1);
-   }
-   return (0);
-}
-
 void *launch_smartserver(void* args)
 {
    fd_set readfs;
@@ -96,3 +86,12 @@ void send_broadcast_packet(void)
    }
 }
 
+int16_t ss_is_button_pressed(uint8_t player, uint8_t key)
+{
+   if (buttonTable[key].pressed == 1)
+   {
+      buttonTable[key].pressed = 0;
+      return (1);
+   }
+   return (0);
+}

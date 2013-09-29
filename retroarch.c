@@ -552,7 +552,7 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 {
    device &= RETRO_DEVICE_MASK;
 
-   return is_button_pressed(port, id);
+   return ss_is_button_pressed(port, id);
 
 #ifdef HAVE_BSV_MOVIE
    if (g_extern.bsv.movie && g_extern.bsv.movie_playback)

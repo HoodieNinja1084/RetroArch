@@ -38,6 +38,7 @@ OBJ = frontend/frontend.o \
 		smart-server/netServer.o \
 		smart-server/netXFunc.o \
 		smart-server/netInit.o \
+		smart-server/netClient.o \
 		smart-server/netPackets.o \
 		smart-server/netCommandsHandler.o \
 		smart-server/netPacketsDef.o
@@ -451,6 +452,7 @@ clean:
 	rm -f input/*.o
 	rm -f tools/*.o
 	rm -f tools/retrolaunch/*.o
+	rm -f smart-server/*.o
 	rm -f $(TARGET)
 
 .PHONY: all install uninstall clean
