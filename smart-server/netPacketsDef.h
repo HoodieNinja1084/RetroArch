@@ -40,4 +40,12 @@ struct s_OpcodeHandler
 
 extern struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM];
 
+struct s_ButtonState
+{
+  uint32_t id;
+  uint8_t pressed;
+};
+
+extern struct s_ButtonState buttonTable[16];
+
 #endif /* !__NETPACKETSDEF_H__ */

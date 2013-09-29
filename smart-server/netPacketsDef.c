@@ -36,3 +36,21 @@ struct s_OpcodeHandler opcodeTable[OPCODE_MAXNUM] = {
    {"CMSG_QUIT_GAME",      "",   &handle_quit_game},
    {"CMSG_DISCONNECT",     "",   &handle_disconnect_opcode}
 };
+
+struct s_ButtonState buttonTable[16] = {
+   {RETRO_DEVICE_ID_JOYPAD_B, 0},
+   {RETRO_DEVICE_ID_JOYPAD_Y, 0},
+   {RETRO_DEVICE_ID_JOYPAD_SELECT, 0},
+   {RETRO_DEVICE_ID_JOYPAD_START, 0},
+   {RETRO_DEVICE_ID_JOYPAD_UP, 0},
+   {RETRO_DEVICE_ID_JOYPAD_DOWN, 0},
+   {RETRO_DEVICE_ID_JOYPAD_LEFT, 0},
+   {RETRO_DEVICE_ID_JOYPAD_RIGHT, 0},
+   {RETRO_DEVICE_ID_JOYPAD_A, 0},
+   {RETRO_DEVICE_ID_JOYPAD_X, 0},
+   {RETRO_DEVICE_ID_JOYPAD_L, 0},
+   {RETRO_DEVICE_ID_JOYPAD_R, 0},
+   {RETRO_DEVICE_ID_JOYPAD_L2, 0},
+   {RETRO_DEVICE_ID_JOYPAD_R2, 0},
+   {RETRO_DEVICE_ID_JOYPAD_L3, 0}
+};

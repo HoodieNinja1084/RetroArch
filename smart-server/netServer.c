@@ -1,5 +1,15 @@
 #include "netServer.h"
 
+int16_t is_button_pressed(uint8_t player, uint8_t key)
+{
+   if (buttonTable[key].pressed == 1)
+   {
+      buttonTable[key].pressed = 0;
+      return (1);
+   }
+   return (0);
+}
+
 void *launch_smartserver(void* args)
 {
    fd_set readfs;
