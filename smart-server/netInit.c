@@ -13,7 +13,7 @@ void init_server(network_t* netInfo)
    xlisten(netInfo->sSocketTCP, MAX_CLIENT);
 
    // active keepalive
-   optval = 1;
+   /*optval = 1;
    if (setsockopt(netInfo->sSocketTCP, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0)
       RARCH_ERR("Smart-Server: setsockopt SOL_SOCKET SO_KEEPALIVE error");
 
@@ -28,7 +28,7 @@ void init_server(network_t* netInfo)
    optval = 10;
    if (setsockopt(netInfo->sSocketTCP, SOL_TCP, TCP_KEEPINTVL, &optval, sizeof(optval)) < 0)
       RARCH_ERR("Smart-Server: setsockopt SOL_TCP TCP_KEEPINTVL error");
-
+   */
    netInfo->sSocketUDP = xsocket(AF_INET, SOCK_DGRAM, 0);
    optval = 1;
    if (setsockopt(netInfo->sSocketUDP, SOL_SOCKET, SO_BROADCAST, (void*)&optval, sizeof(optval)) < 0)

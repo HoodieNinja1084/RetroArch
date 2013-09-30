@@ -89,9 +89,6 @@ void send_broadcast_packet(void)
 int16_t ss_is_button_pressed(uint8_t player, uint8_t key)
 {
    if (key < RARCH_BIND_LIST_END && buttonTable[key].pressed == 1)
-   {
-      buttonTable[key].pressed = 0;
       return (1);
-   }
    return (0);
 }
