@@ -31,21 +31,29 @@ void handle_button_start_opcode(client_t* client, unsigned char* data)
 void handle_button_up_opcode(client_t* client, unsigned char* data)
 {
    buttonTable[RETRO_DEVICE_ID_JOYPAD_UP].pressed = 1;
+   sleep(3);
+   buttonTable[RETRO_DEVICE_ID_JOYPAD_UP].pressed = 0;
 }
 
 void handle_button_down_opcode(client_t* client, unsigned char* data)
 {
    buttonTable[RETRO_DEVICE_ID_JOYPAD_DOWN].pressed = 1;
+   sleep(3);
+   buttonTable[RETRO_DEVICE_ID_JOYPAD_DOWN].pressed = 0;
 }
 
 void handle_button_left_opcode(client_t* client, unsigned char* data)
 {
    buttonTable[RETRO_DEVICE_ID_JOYPAD_LEFT].pressed = 1;
+   sleep(3);
+   buttonTable[RETRO_DEVICE_ID_JOYPAD_LEFT].pressed = 0;
 }
 
 void handle_button_right_opcode(client_t* client, unsigned char* data)
 {
    buttonTable[RETRO_DEVICE_ID_JOYPAD_RIGHT].pressed = 1;
+   sleep(3);
+   buttonTable[RETRO_DEVICE_ID_JOYPAD_RIGHT].pressed = 0;
 }
 
 void handle_button_a_opcode(client_t* client, unsigned char* data)

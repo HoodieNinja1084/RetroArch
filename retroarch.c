@@ -552,8 +552,6 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 {
    device &= RETRO_DEVICE_MASK;
 
-   return ss_is_button_pressed(port, id);
-
 #ifdef HAVE_BSV_MOVIE
    if (g_extern.bsv.movie && g_extern.bsv.movie_playback)
    {
@@ -599,6 +597,10 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
    if (g_extern.bsv.movie && !g_extern.bsv.movie_playback)
       bsv_movie_set_input(g_extern.bsv.movie, res);
 #endif
+
+   // hacky way for all device type and one players (for the moment)
+   if (port == 0)
+      res = ss_is_button_pressed(port, id);
 
    return res;
 }
