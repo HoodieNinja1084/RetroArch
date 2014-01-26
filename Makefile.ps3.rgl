@@ -20,9 +20,9 @@ INCDIRS = -I. -Ips3/rgl/include
 
 RGL_DIR = ps3/rgl/src
 
-PPU_SRCS		=  $(RGL_DIR)/libelf/readelf.cpp \
-			  $(RGL_DIR)/ps3/rgl_ps3_raster.cpp \
-			  $(RGL_DIR)/ps3/rgl_ps3.cpp
+PPU_SRCS		=  $(RGL_DIR)/libelf/readelf.c \
+			  $(RGL_DIR)/rgl_ps3_raster.cpp \
+			  $(RGL_DIR)/rgl_ps3.cpp
 
 
 ifeq ($(CELL_BUILD_TOOLS), SNC)
@@ -42,7 +42,7 @@ PPU_RANLIB = $(CELL_SDK)/host-win32/ppu/bin/ppu-lv2-ranlib.exe
 
 PPU_LDLIBS = -lio_stub 
 
-DEFINES += -D__CELLOS_LV2__
+DEFINES += -D__CELLOS_LV2__ -DRARCH_INTERNAL
 
 ifeq ($(DEBUG), 1)
    PPU_OPTIMIZE_LV	:= -O0 -g

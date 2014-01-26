@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -188,20 +188,12 @@ static void gfx_ctx_set_resize(unsigned width, unsigned height) { }
 
 static void gfx_ctx_update_window_title(void)
 {
-   gl_t *gl = (gl_t*)driver.video_data;
-   char buf[128];
+   char buf[128], buf_fps[128];
+   bool fps_draw = g_settings.fps_show;
+   gfx_get_fps(buf, sizeof(buf), fps_draw ? buf_fps : NULL, sizeof(buf_fps));
 
-   if (gfx_get_fps(buf, sizeof(buf), false) &&
-   (g_extern.lifecycle_mode_state & (1ULL << MODE_FPS_DRAW)) &&
-         gl->font_ctx)
-   {
-      font_params_t params = {0};
-      params.x = g_settings.video.msg_pos_x;
-      params.y = 0.56f;
-      params.scale = 1.04f;
-      params.color = WHITE;
-      gl->font_ctx->render_msg(gl, buf, &params);
-   }
+   if (fps_draw)
+      msg_queue_push(g_extern.msg_queue, buf_fps, 1, 1);
 }
 
 static void gfx_ctx_get_video_size(unsigned *width, unsigned *height)
@@ -219,9 +211,6 @@ static bool gfx_ctx_init(void)
       .maxSPUs = 1,
       .initializeSPUs = GL_FALSE,
    };
-#if CELL_SDK_VERSION < 0x340000
-   options.enable |=	PSGL_INIT_HOST_MEMORY_SIZE;
-#endif
 
    // Initialize 6 SPUs but reserve 1 SPU as a raw SPU for PSGL
    sys_spu_initialize(6, 1);
@@ -236,7 +225,7 @@ static bool gfx_ctx_init(void)
    params.depthFormat = GL_NONE;
    params.multisamplingMode = GL_MULTISAMPLING_NONE_SCE;
 
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE))
+   if (g_extern.lifecycle_state & (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE))
    {
       RARCH_LOG("[PSGL Context]: Setting triple buffering.\n");
       params.enable |= PSGL_DEVICE_PARAMETERS_BUFFERING_MODE;
@@ -252,13 +241,13 @@ static bool gfx_ctx_init(void)
       if (params.width == 720 && params.height == 576)
       {
          RARCH_LOG("[PSGL Context]: 720x576 resolution detected, setting MODE_VIDEO_PAL_ENABLE.\n");
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_PAL_ENABLE);
+         g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_PAL_ENABLE);
       }
       else
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_VIDEO_PAL_ENABLE);
+         g_extern.lifecycle_state &= ~(1ULL << MODE_VIDEO_PAL_ENABLE);
    }
 
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_PAL_TEMPORAL_ENABLE))
+   if (g_extern.lifecycle_state & (1ULL << MODE_VIDEO_PAL_TEMPORAL_ENABLE))
    {
       RARCH_LOG("[PSGL Context]: Setting temporal PAL60 mode.\n");
       params.enable |= PSGL_DEVICE_PARAMETERS_RESC_PAL_TEMPORAL_MODE;
@@ -298,7 +287,12 @@ static void gfx_ctx_destroy(void)
 #endif
 }
 
-static void gfx_ctx_input_driver(const input_driver_t **input, void **input_data) { }
+static void gfx_ctx_input_driver(const input_driver_t **input, void **input_data)
+{
+   void *ps3input = input_ps3.init();
+   *input = ps3input ? &input_ps3 : NULL;
+   *input_data = ps3input;
+}
 
 static bool gfx_ctx_bind_api(enum gfx_ctx_api api, unsigned major, unsigned minor)
 {

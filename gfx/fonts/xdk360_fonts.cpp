@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -20,7 +20,7 @@
 #include "../../general.h"
 #include "../../xdk/xdk_resources.h"
 
-#define FONT_SCALE ((g_extern.lifecycle_mode_state & (1ULL << MODE_MENU_HD)) ? 2 : 1)
+#define FONT_SCALE ((g_extern.lifecycle_state & (1ULL << MODE_MENU_HD)) ? 2 : 1)
 
 typedef struct GLYPH_ATTR
 {
@@ -180,6 +180,7 @@ static HRESULT xdk360_video_font_create_shaders (xdk360_video_font_t * font)
 static bool xdk_init_font(void *data, const char *font_path, unsigned font_size)
 {
    (void)font_size;
+   (void)data;
 
    // Create the font
    xdk360_video_font_t *font = &m_Font;
@@ -253,23 +254,16 @@ static void xdk_deinit_font(void *data)
    font->m_cMaxGlyph = 0;
    font->m_TranslatorTable = NULL;
 
-   if (s_FontLocals.m_pFontPixelShader != NULL)
-   {
+   if (s_FontLocals.m_pFontPixelShader)
       s_FontLocals.m_pFontPixelShader->Release();
-      s_FontLocals.m_pFontPixelShader = NULL;
-   }
-
-   if (s_FontLocals.m_pFontVertexShader != NULL)
-   {
+   if (s_FontLocals.m_pFontVertexShader)
       s_FontLocals.m_pFontVertexShader->Release();
-      s_FontLocals.m_pFontVertexShader = NULL;
-   }
-
-   if (s_FontLocals.m_pFontVertexDecl != NULL)
-   {
+   if (s_FontLocals.m_pFontVertexDecl)
       s_FontLocals.m_pFontVertexDecl->Release();
-      s_FontLocals.m_pFontVertexDecl = NULL;
-   }
+
+   s_FontLocals.m_pFontPixelShader = NULL;
+   s_FontLocals.m_pFontVertexShader = NULL;
+   s_FontLocals.m_pFontVertexDecl = NULL;
 
    if (m_xprResource.Initialized())
       m_xprResource.Destroy();
@@ -456,13 +450,13 @@ static void xdk_render_msg(void *driver, const char *str_msg, void *parms)
    }
    else
    {
-      x = (g_extern.lifecycle_mode_state & (1ULL << MODE_MENU_HD)) ? 160 : 100;
+      x = (g_extern.lifecycle_state & (1ULL << MODE_MENU_HD)) ? 160 : 100;
       y = 120;
    }
 
    mbstowcs(msg, str_msg, sizeof(msg) / sizeof(wchar_t));
 
-   if (msg != NULL || msg[0] != L'\0')
+   if (msg || msg[0] != L'\0')
    {
       xdk_render_msg_pre(font);
       xdk_video_font_draw_text(font, x, y, msg);

@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -179,7 +179,6 @@ static void psp_free(void *data)
 }
 
 #ifdef RARCH_CONSOLE
-static void psp_start(void) {}
 static void psp_restart(void) {}
 #endif
 
@@ -198,7 +197,6 @@ const video_driver_t video_psp1 = {
    "psp1",
 
 #ifdef RARCH_CONSOLE
-   psp_start,
    psp_restart,
    NULL,
    NULL,

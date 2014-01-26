@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -17,7 +17,10 @@
 #define RPNG_H__
 
 #include <stdint.h>
-#include "../../boolean.h"
+
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "../../config.h"

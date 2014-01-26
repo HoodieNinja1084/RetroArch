@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -25,6 +25,7 @@
 #include "../../general.h"
 #include "../../compat/strl.h"
 #include "../../compat/posix_string.h"
+#include "../../input/input_common.h"
 #include "../../file.h"
 
 static PyObject* py_read_wram(PyObject *self, PyObject *args)
@@ -210,13 +211,17 @@ static char *align_program(const char *program)
    size_t prog_size = strlen(program) + 1;
    char *new_prog = (char*)calloc(1, prog_size);
    if (!new_prog)
+   {
+      free(prog);
       return NULL;
+   }
 
    char *save;
    char *line = dupe_newline(strtok_r(prog, "\n", &save));
    if (!line)
    {
       free(prog);
+      free(new_prog);
       return NULL;
    }
 
@@ -332,7 +337,21 @@ void py_state_free(py_state_t *handle)
 float py_state_get(py_state_t *handle, const char *id,
       unsigned frame_count)
 {
+   unsigned i;
+   for (i = 0; i < MAX_PLAYERS; i++)
+   {
+      input_push_analog_dpad(g_settings.input.binds[i], g_settings.input.analog_dpad_mode[i]);
+      input_push_analog_dpad(g_settings.input.autoconf_binds[i], g_settings.input.analog_dpad_mode[i]);
+   }
+
    PyObject *ret = PyObject_CallMethod(handle->inst, (char*)id, (char*)"I", frame_count);
+
+   for (i = 0; i < MAX_PLAYERS; i++)
+   {
+      input_pop_analog_dpad(g_settings.input.binds[i]);
+      input_pop_analog_dpad(g_settings.input.autoconf_binds[i]);
+   }
+
    if (!ret)
    {
       if (!handle->warned_ret)

@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -55,6 +55,8 @@ static volatile sig_atomic_t g_quit;
 static bool g_inited;
 static unsigned g_interval;
 static enum gfx_ctx_api g_api;
+static unsigned g_major;
+static unsigned g_minor;
 
 static struct gbm_device *g_gbm_dev;
 static struct gbm_surface *g_gbm_surface;
@@ -215,8 +217,12 @@ static void gfx_ctx_set_resize(unsigned width, unsigned height)
 
 static void gfx_ctx_update_window_title(void)
 {
-   char buf[128];
-   gfx_get_fps(buf, sizeof(buf), false);
+   char buf[128], buf_fps[128];
+   bool fps_draw = g_settings.fps_show;
+   gfx_get_fps(buf, sizeof(buf), fps_draw ? buf_fps : NULL, sizeof(buf_fps));
+
+   if (fps_draw)
+      msg_queue_push(g_extern.msg_queue, buf_fps, 1, 1);
 }
 
 static void gfx_ctx_get_video_size(unsigned *width, unsigned *height)
@@ -227,6 +233,7 @@ static void gfx_ctx_get_video_size(unsigned *width, unsigned *height)
 
 static bool gfx_ctx_init(void)
 {
+   int i;
    if (g_inited)
       return false;
 
@@ -244,7 +251,7 @@ static bool gfx_ctx_init(void)
       goto error;
    }
 
-   for (int i = 0; i < g_resources->count_connectors; i++)
+   for (i = 0; i < g_resources->count_connectors; i++)
    {
       g_connector = drmModeGetConnector(g_drm_fd, g_resources->connectors[i]);
 
@@ -263,7 +270,7 @@ static bool gfx_ctx_init(void)
       goto error;
    }
 
-   for (int i = 0; i < g_resources->count_encoders; i++)
+   for (i = 0; i < g_resources->count_encoders; i++)
    {
       g_encoder = drmModeGetEncoder(g_drm_fd, g_resources->encoders[i]);
 
@@ -388,15 +395,23 @@ static bool gfx_ctx_set_video_mode(
       EGL_NONE,
    };
 
+#ifdef EGL_OPENGL_ES3_BIT_KHR
+   static const EGLint egl_attribs_gles3[] = {
+      EGL_ATTRIBS_BASE,
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
+      EGL_NONE,
+   };
+#endif
+
    static const EGLint egl_attribs_vg[] = {
       EGL_ATTRIBS_BASE,
       EGL_RENDERABLE_TYPE, EGL_OPENVG_BIT,
       EGL_NONE,
    };
 
-   // GLES 2.0. Don't use for any other API.
-   static const EGLint gles_context_attribs[] = {
-      EGL_CONTEXT_CLIENT_VERSION, 2,
+   // GLES 2.0+. Don't use for any other API.
+   const EGLint gles_context_attribs[] = {
+      EGL_CONTEXT_CLIENT_VERSION, g_major ? g_major : 2,
       EGL_NONE
    };
 
@@ -407,6 +422,11 @@ static bool gfx_ctx_set_video_mode(
          attrib_ptr = egl_attribs_gl;
          break;
       case GFX_CTX_OPENGL_ES_API:
+#ifdef EGL_OPENGL_ES3_BIT_KHR
+         if (g_major >= 3)
+            attrib_ptr = egl_attribs_gles3;
+         else
+#endif
          attrib_ptr = egl_attribs_gles;
          break;
       case GFX_CTX_OPENVG_API:
@@ -540,9 +560,8 @@ void gfx_ctx_destroy(void)
 
 static void gfx_ctx_input_driver(const input_driver_t **input, void **input_data)
 {
-   void *linuxinput = input_linuxraw.init();
-   *input           = linuxinput ? &input_linuxraw : NULL;
-   *input_data      = linuxinput;
+   *input = NULL;
+   *input_data = NULL;
 }
 
 static bool gfx_ctx_has_focus(void)
@@ -557,14 +576,18 @@ static gfx_ctx_proc_t gfx_ctx_get_proc_address(const char *symbol)
 
 static bool gfx_ctx_bind_api(enum gfx_ctx_api api, unsigned major, unsigned minor)
 {
-   (void)major;
-   (void)minor;
+   g_major = major;
+   g_minor = minor;
    g_api = api;
    switch (api)
    {
       case GFX_CTX_OPENGL_API:
          return eglBindAPI(EGL_OPENGL_API);
       case GFX_CTX_OPENGL_ES_API:
+#ifndef EGL_OPENGL_ES3_BIT_KHR
+         if (major >= 3)
+            return false;
+#endif
          return eglBindAPI(EGL_OPENGL_ES_API);
       case GFX_CTX_OPENVG_API:
          return eglBindAPI(EGL_OPENVG_API);

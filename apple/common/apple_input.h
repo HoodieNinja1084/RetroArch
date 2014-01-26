@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2013 - Jason Fetters
+ *  Copyright (C) 2013-2014 - Jason Fetters
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -16,10 +16,11 @@
 #ifndef __APPLE_RARCH_INPUT_H__
 #define __APPLE_RARCH_INPUT_H__
 
+#include "general.h"
+
 // Input responder
 #define MAX_TOUCHES 16
 #define MAX_KEYS 256
-#define MAX_PADS 4
 
 typedef struct
 {
@@ -38,21 +39,44 @@ typedef struct
 
    uint32_t keys[MAX_KEYS];
 
-   uint32_t pad_buttons[MAX_PADS];
-   int16_t pad_axis[MAX_PADS][4];
+   uint32_t pad_buttons[MAX_PLAYERS];
+   int16_t pad_axis[MAX_PLAYERS][4];
 } apple_input_data_t;
 
-extern apple_input_data_t g_current_input_data; //< Main thread data
-extern apple_input_data_t g_polled_input_data;  //< Game thread data
+struct apple_pad_connection;
+struct apple_pad_interface
+{
+   void* (*connect)(struct apple_pad_connection* connection, uint32_t slot);
+   void (*disconnect)(void* device);
+   void (*packet_handler)(void* device, uint8_t *packet, uint16_t size);
+   void (*set_rumble)(void* device, enum retro_rumble_effect effect, uint16_t strength);
+};
+
+
+// Joypad data
+int32_t apple_joypad_connect(const char* name, struct apple_pad_connection* connection);
+int32_t apple_joypad_connect_gcapi();
+void apple_joypad_disconnect(uint32_t slot);
+void apple_joypad_packet(uint32_t slot, uint8_t* data, uint32_t length);
+
+// Determine if connected joypad is a hidpad backed device; if false apple_joypad_packet cannot be used
+bool apple_joypad_has_interface(uint32_t slot);
+
+// This is implemented in the platform specific portions of the input code
+void apple_joypad_send_hid_control(struct apple_pad_connection* connection, uint8_t* data, size_t size);
+
+// Input data for the main thread and the game thread
+extern apple_input_data_t g_current_input_data;
+extern apple_input_data_t g_polled_input_data;
 
 // Main thread only
 void apple_input_enable_icade(bool on);
-uint32_t apple_input_get_icade_buttons();
-void apple_input_reset_icade_buttons();
-void apple_input_handle_key_event(unsigned keycode, bool down);
+void apple_input_enable_small_keyboard(bool on);
+uint32_t apple_input_get_icade_buttons(void);
+void apple_input_reset_icade_buttons(void);
+void apple_input_keyboard_event(bool down, unsigned code, uint32_t character, uint32_t mod);
 
-
-extern int32_t apple_input_find_any_key();
+extern int32_t apple_input_find_any_key(void);
 extern int32_t apple_input_find_any_button(uint32_t port);
 extern int32_t apple_input_find_any_axis(uint32_t port);
 

@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -38,102 +38,6 @@
 #include <windows.h>
 #endif
 #endif
-
-// Dump stuff to file.
-bool write_file(const char *path, const void *data, size_t size)
-{
-   FILE *file = fopen(path, "wb");
-   if (!file)
-      return false;
-   else
-   {
-      bool ret = fwrite(data, 1, size, file) == size;
-      fclose(file);
-      return ret;
-   }
-}
-
-// Generic file loader.
-ssize_t read_file(const char *path, void **buf)
-{
-   void *rom_buf = NULL;
-   FILE *file = fopen(path, "rb");
-   ssize_t rc = 0;
-   size_t len = 0;
-   if (!file)
-      goto error;
-
-   fseek(file, 0, SEEK_END);
-   len = ftell(file);
-   rewind(file);
-   rom_buf = malloc(len + 1);
-   if (!rom_buf)
-   {
-      RARCH_ERR("Couldn't allocate memory.\n");
-      goto error;
-   }
-
-   if ((rc = fread(rom_buf, 1, len, file)) < (ssize_t)len)
-      RARCH_WARN("Didn't read whole file.\n");
-
-   *buf = rom_buf;
-   // Allow for easy reading of strings to be safe.
-   // Will only work with sane character formatting (Unix).
-   ((char*)rom_buf)[len] = '\0'; 
-   fclose(file);
-   return rc;
-
-error:
-   if (file)
-      fclose(file);
-   free(rom_buf);
-   *buf = NULL;
-   return -1;
-}
-
-// Reads file content as one string.
-bool read_file_string(const char *path, char **buf)
-{
-   *buf = NULL;
-   FILE *file = fopen(path, "r");
-   size_t len = 0;
-   char *ptr = NULL;
-
-   if (!file)
-      goto error;
-
-   fseek(file, 0, SEEK_END);
-   len = ftell(file) + 2; // Takes account of being able to read in EOF and '\0' at end.
-   rewind(file);
-
-   *buf = (char*)calloc(len, sizeof(char));
-   if (!*buf)
-      goto error;
-
-   ptr = *buf;
-
-   while (ptr && !feof(file))
-   {
-      size_t bufsize = (size_t)(((ptrdiff_t)*buf + (ptrdiff_t)len) - (ptrdiff_t)ptr);
-      fgets(ptr, bufsize, file);
-
-      ptr += strlen(ptr);
-   }
-
-   ptr = strchr(ptr, EOF);
-   if (ptr)
-      *ptr = '\0';
-
-   fclose(file);
-   return true;
-
-error:
-   if (file)
-      fclose(file);
-   if (*buf)
-      free(*buf);
-   return false;
-}
 
 static void patch_rom(uint8_t **buf, ssize_t *size)
 {
@@ -329,9 +233,11 @@ bool save_state(const char *path)
 
 bool load_state(const char *path)
 {
-   RARCH_LOG("Loading state: \"%s\".\n", path);
+   unsigned i;
    void *buf = NULL;
    ssize_t size = read_file(path, &buf);
+
+   RARCH_LOG("Loading state: \"%s\".\n", path);
 
    if (size < 0)
    {
@@ -374,16 +280,16 @@ bool load_state(const char *path)
       }
    }
 
-   for (unsigned i = 0; i < 2; i++)
+   for (i = 0; i < 2; i++)
       if (block_type[i] != -1)
          block_size[i] = pretro_get_memory_size(block_type[i]);
 
-   for (unsigned i = 0; i < 2; i++)
+   for (i = 0; i < 2; i++)
       if (block_size[i])
          block_buf[i] = malloc(block_size[i]);
 
    // Backup current SRAM which is overwritten by unserialize.
-   for (unsigned i = 0; i < 2; i++)
+   for (i = 0; i < 2; i++)
    {
       if (block_buf[i])
       {
@@ -396,7 +302,7 @@ bool load_state(const char *path)
    ret = pretro_unserialize(buf, size);
 
    // Flush back :D
-   for (unsigned i = 0; i < 2 && ret; i++)
+   for (i = 0; i < 2 && ret; i++)
    {
       if (block_buf[i])
       {
@@ -406,7 +312,7 @@ bool load_state(const char *path)
       }
    }
 
-   for (unsigned i = 0; i < 2; i++)
+   for (i = 0; i < 2; i++)
       if (block_buf[i])
          free(block_buf[i]);
 
@@ -424,8 +330,16 @@ void load_ram_file(const char *path, int type)
 
    void *buf = NULL;
    ssize_t rc = read_file(path, &buf);
-   if (rc > 0 && rc <= (ssize_t)size)
+   if (rc > 0)
+   {
+      if (rc > (ssize_t)size)
+      {
+         RARCH_WARN("SRAM is larger than implementation expects, doing partial load (truncating %u bytes to %u).\n",
+               (unsigned)rc, (unsigned)size);
+         rc = size;
+      }
       memcpy(data, buf, rc);
+   }
 
    free(buf);
 }
@@ -448,22 +362,11 @@ void save_ram_file(const char *path, int type)
    }
 }
 
-static char *load_xml_map(const char *path)
-{
-   char *xml_buf = NULL;
-   if (*path)
-   {
-      if (read_file_string(path, &xml_buf))
-         RARCH_LOG("Found XML memory map in \"%s\"\n", path);
-   }
-
-   return xml_buf;
-}
-
 #define MAX_ROMS 4
 
 static bool load_roms(unsigned rom_type, const char **rom_paths, size_t roms)
 {
+   size_t i;
    bool ret = true;
 
    if (roms == 0)
@@ -473,9 +376,8 @@ static bool load_roms(unsigned rom_type, const char **rom_paths, size_t roms)
       return false;
 
    void *rom_buf[MAX_ROMS] = {NULL};
-   ssize_t rom_len[MAX_ROMS] = {0};
+   long rom_len[MAX_ROMS] = {0};
    struct retro_game_info info[MAX_ROMS] = {{NULL}};
-   char *xml_buf = load_xml_map(g_extern.xml_name);
 
    if (!g_extern.system.info.need_fullpath)
    {
@@ -495,9 +397,9 @@ static bool load_roms(unsigned rom_type, const char **rom_paths, size_t roms)
    info[0].path = rom_paths[0];
    info[0].data = rom_buf[0];
    info[0].size = rom_len[0];
-   info[0].meta = xml_buf;
+   info[0].meta = NULL; // Not relevant at this moment.
 
-   for (size_t i = 1; i < roms; i++)
+   for (i = 1; i < roms; i++)
    {
       if (rom_paths[i] &&
             !g_extern.system.info.need_fullpath &&
@@ -511,6 +413,7 @@ static bool load_roms(unsigned rom_type, const char **rom_paths, size_t roms)
       info[i].path = rom_paths[i];
       info[i].data = rom_buf[i];
       info[i].size = rom_len[i];
+      info[i].meta = NULL;
    }
 
    if (rom_type == 0)
@@ -522,10 +425,8 @@ static bool load_roms(unsigned rom_type, const char **rom_paths, size_t roms)
       RARCH_ERR("Failed to load game.\n");
 
 end:
-   for (unsigned i = 0; i < MAX_ROMS; i++)
+   for (i = 0; i < MAX_ROMS; i++)
       free(rom_buf[i]);
-   free(xml_buf);
-
    return ret;
 }
 

@@ -17,19 +17,12 @@ var LibraryRWebAudio = {
       setStartTime: function() {
          if (RA.context.currentTime) {
             RA.startTime = window['performance']['now']() - RA.context.currentTime * 1000;
-            var time1 = RA.context.currentTime;
-            _usleep(50);
-            if (time1 === RA.context.currentTime) {
-               RA.currentTimeWorkaround = true;
-               if (RA.startTime === 0) throw 'startTime is 0';
-            }
             Module["resumeMainLoop"]();
          } else window['setTimeout'](RA.setStartTime, 0);
       },
 
       getCurrentPerfTime: function() {
-         if (!RA.currentTimeWorkaround) return RA.context.currentTime;
-         else if (RA.startTime) return (window['performance']['now']() - RA.startTime) / 1000;
+         if (RA.startTime) return (window['performance']['now']() - RA.startTime) / 1000;
          else throw 'getCurrentPerfTime() called before start time set';
       },
 

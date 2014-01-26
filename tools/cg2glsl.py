@@ -546,11 +546,19 @@ def preprocess_vertex(source_data):
    return '\n'.join(ret)
 
 def convert(source, dest):
-   vert_cmd = ['cgc', '-profile', 'glesv', '-entry', 'main_vertex']
-   with open(source, 'r') as f:
-      source_data = f.read()
+   # Have to preprocess first to resolve #includes so we can hack potential vertex shaders.
+   vert_cmd_preprocess = ['cgc', '-E', '-I', os.path.split(source)[0], source]
+   p = subprocess.Popen(vert_cmd_preprocess, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
+   source_data, stderr_ret = p.communicate()
+   log(stderr_ret.decode())
+
+   if p.returncode != 0:
+      log('Vertex preprocessing failed ...')
+
+   source_data = preprocess_vertex(source_data.decode())
+
+   vert_cmd = ['cgc', '-profile', 'glesv', '-entry', 'main_vertex', '-quiet']
    p = subprocess.Popen(vert_cmd, stdin = subprocess.PIPE, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
-   source_data = preprocess_vertex(source_data)
    vertex_source, stderr_ret = p.communicate(input = source_data.encode())
    log(stderr_ret.decode())
    vertex_source = vertex_source.decode()
@@ -559,9 +567,9 @@ def convert(source, dest):
       log('Vertex compilation failed ...')
       return 1
 
-   frag_cmd = ['cgc', '-profile', 'glesf', '-entry', 'main_fragment', source]
-   p = subprocess.Popen(frag_cmd, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
-   fragment_source, stderr_ret = p.communicate()
+   frag_cmd = ['cgc', '-profile', 'glesf', '-entry', 'main_fragment', '-quiet']
+   p = subprocess.Popen(frag_cmd, stdin = subprocess.PIPE, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
+   fragment_source, stderr_ret = p.communicate(input = source_data.encode())
    log(stderr_ret.decode())
    fragment_source = fragment_source.decode()
 
@@ -675,6 +683,7 @@ def main():
    if len(sys.argv) != 3:
       print('Usage: {} prog.cg(p) prog.glsl(p)'.format(sys.argv[0]))
       print('Batch mode usage: {} cg-dir out-xml-shader-dir'.format(sys.argv[0]))
+      print('Requires Python 3 and cgc (nvidia-cg-toolkit) 3.1.')
       return 1
 
    if os.path.isdir(sys.argv[1]):

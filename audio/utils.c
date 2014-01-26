@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -28,15 +28,17 @@
 void audio_convert_s16_to_float_C(float *out,
       const int16_t *in, size_t samples, float gain)
 {
+   size_t i;
    gain = gain / 0x8000;
-   for (size_t i = 0; i < samples; i++)
+   for (i = 0; i < samples; i++)
       out[i] = (float)in[i] * gain; 
 }
 
 void audio_convert_float_to_s16_C(int16_t *out,
       const float *in, size_t samples)
 {
-   for (size_t i = 0; i < samples; i++)
+   size_t i;
+   for (i = 0; i < samples; i++)
    {
       int32_t val = (int32_t)(in[i] * 0x8000);
       out[i] = (val > 0x7FFF) ? 0x7FFF : (val < -0x8000 ? -0x8000 : (int16_t)val);
@@ -138,19 +140,17 @@ void audio_convert_float_to_s16_altivec(int16_t *out,
       audio_convert_float_to_s16_C(out, in, samples);
 }
 #elif defined(HAVE_NEON)
-void audio_convert_s16_float_asm(float *out, const int16_t *in, size_t samples);
+void audio_convert_s16_float_asm(float *out, const int16_t *in, size_t samples, const float *gain); // Avoid potential hard-float/soft-float ABI issues.
 static void audio_convert_s16_to_float_neon(float *out, const int16_t *in, size_t samples,
       float gain)
 {
-   (void)gain; // gain is ignored for now.
-
    size_t aligned_samples = samples & ~7;
    if (aligned_samples)
-      audio_convert_s16_float_asm(out, in, aligned_samples);
+      audio_convert_s16_float_asm(out, in, aligned_samples, &gain);
 
    // Could do all conversion in ASM, but keep it simple for now.
    audio_convert_s16_to_float_C(out + aligned_samples, in + aligned_samples,
-         samples - aligned_samples, 1.0f);
+         samples - aligned_samples, gain);
 }
 
 void audio_convert_float_s16_asm(int16_t *out, const float *in, size_t samples);
@@ -168,11 +168,10 @@ static void audio_convert_float_to_s16_neon(int16_t *out, const float *in, size_
 void audio_convert_init_simd(void)
 {
 #ifdef HAVE_NEON
-   struct rarch_cpu_features cpu;
-   rarch_get_cpu_features(&cpu);
-   audio_convert_s16_to_float_arm = cpu.simd & RARCH_SIMD_NEON ?
+   unsigned cpu = rarch_get_cpu_features();
+   audio_convert_s16_to_float_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_s16_to_float_neon : audio_convert_s16_to_float_C;
-   audio_convert_float_to_s16_arm = cpu.simd & RARCH_SIMD_NEON ?
+   audio_convert_float_to_s16_arm = cpu & RETRO_SIMD_NEON ?
       audio_convert_float_to_s16_neon : audio_convert_float_to_s16_C;
 #endif
 }

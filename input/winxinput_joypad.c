@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2013 - pinumbernumber
+ *  Copyright (C) 2013-2014 - pinumbernumber
  *  
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -65,6 +65,12 @@ typedef struct
    XINPUT_GAMEPAD Gamepad;
 } XINPUT_STATE;
 
+typedef struct
+{
+   uint16_t wLeftMotorSpeed;
+   uint16_t wRightMotorSpeed;
+} XINPUT_VIBRATION;
+
 #endif
 
 // Guide constant is not officially documented
@@ -86,12 +92,15 @@ typedef struct
 extern int g_xinput_pad_indexes[MAX_PLAYERS];
 extern bool g_xinput_block_pads;
 
-// For xinput1_3.dll
+// For xinput1_n.dll
 static HINSTANCE g_winxinput_dll;
 
 // Function pointer, to be assigned with GetProcAddress
 typedef uint32_t (__stdcall *XInputGetStateEx_t)(uint32_t, XINPUT_STATE*);
 static XInputGetStateEx_t g_XInputGetStateEx;
+
+typedef uint32_t (__stdcall *XInputSetState_t)(uint32_t, XINPUT_VIBRATION*);
+static XInputSetState_t g_XInputSetState;
 
 // Guide button may or may not be available
 static bool g_winxinput_guide_button_supported;
@@ -101,6 +110,8 @@ typedef struct
    XINPUT_STATE xstate;
    bool         connected;
 } winxinput_joypad_state;
+
+static XINPUT_VIBRATION g_xinput_rumble_states[4];
 
 static winxinput_joypad_state g_winxinput_states[4];
 
@@ -122,7 +133,7 @@ static const char* const XBOX_CONTROLLER_NAMES[4] =
 const char* winxinput_joypad_name (unsigned pad)
 {
    int xplayer = pad_index_to_xplayer_index(pad);
-   
+
    if (xplayer < 0)
       return dinput_joypad.name(pad);
    else
@@ -130,21 +141,20 @@ const char* winxinput_joypad_name (unsigned pad)
       return XBOX_CONTROLLER_NAMES[xplayer];
 }
 
-
-
 static bool winxinput_joypad_init(void)
 {
+   unsigned i, autoconf_pad;
    g_winxinput_dll = NULL;
-   
+
    // Find the correct path to load the DLL from.
    // Usually this will be from the system directory,
    // but occasionally a user may wish to use a third-party
    // wrapper DLL (such as x360ce); support these by checking
    // the working directory first.
-   
+
    // No need to check for existance as we will be checking LoadLibrary's
    // success anyway.
-   
+
    const char *version = "1.4";
    g_winxinput_dll = LoadLibrary("xinput1_4.dll"); // Using dylib_* complicates building joyconfig.
    if (!g_winxinput_dll)
@@ -160,12 +170,12 @@ static bool winxinput_joypad_init(void)
    }
 
    RARCH_LOG("Found XInput v%s.\n", version);
-   
+
    // If we get here then an xinput DLL is correctly loaded.
    // First try to load ordinal 100 (XInputGetStateEx).
    g_XInputGetStateEx = (XInputGetStateEx_t) GetProcAddress(g_winxinput_dll, (const char*)100);
    g_winxinput_guide_button_supported = true;
-   
+
    if (!g_XInputGetStateEx)
    {
       // no ordinal 100. (Presumably a wrapper.) Load the ordinary
@@ -174,33 +184,42 @@ static bool winxinput_joypad_init(void)
       g_XInputGetStateEx = (XInputGetStateEx_t) GetProcAddress(g_winxinput_dll, "XInputGetState");
       if (!g_XInputGetStateEx)
       {
-         RARCH_ERR("Failed to init XInput: xinput1_3.dll is invalid or corrupt.\n");
+         RARCH_ERR("Failed to init XInput: DLL is invalid or corrupt.\n");
+         FreeLibrary(g_winxinput_dll);
          return false; // DLL was loaded but did not contain the correct function.
       }
       RARCH_WARN("XInput: No guide button support.\n");
    }
-   
+
+   g_XInputSetState = (XInputSetState_t) GetProcAddress(g_winxinput_dll, "XInputSetState");
+   if (!g_XInputSetState)
+   {
+      RARCH_ERR("Failed to init XInput: DLL is invalid or corrupt.\n");
+      FreeLibrary(g_winxinput_dll);
+      return false; // DLL was loaded but did not contain the correct function.
+   }
+
    // Zero out the states
-   for (unsigned i = 0; i < 4; ++i)
+   for (i = 0; i < 4; ++i)
       memset(&g_winxinput_states[i], 0, sizeof(winxinput_joypad_state));
 
    // Do a dummy poll to check which controllers are connected.
    XINPUT_STATE dummy_state;
-   for (unsigned i = 0; i < 4; ++i)
+   for (i = 0; i < 4; ++i)
    {
       g_winxinput_states[i].connected = !(g_XInputGetStateEx(i, &dummy_state) == ERROR_DEVICE_NOT_CONNECTED);
       if (g_winxinput_states[i].connected)
          RARCH_LOG("Found XInput controller, player #%u\n", i);
    }
-   
+
    if ((!g_winxinput_states[0].connected) &&
-       (!g_winxinput_states[1].connected) &&
-       (!g_winxinput_states[2].connected) &&
-       (!g_winxinput_states[3].connected))
+         (!g_winxinput_states[1].connected) &&
+         (!g_winxinput_states[2].connected) &&
+         (!g_winxinput_states[3].connected))
       return false;
 
    g_xinput_block_pads = true;
-   
+
    // We're going to have to be buddies with dinput if we want to be able
    // to use XI and non-XI controllers together.
    if (!dinput_joypad.init())
@@ -208,8 +227,8 @@ static bool winxinput_joypad_init(void)
       g_xinput_block_pads = false;
       return false;
    }
-      
-   for (unsigned autoconf_pad = 0; autoconf_pad < MAX_PLAYERS; autoconf_pad++)
+
+   for (autoconf_pad = 0; autoconf_pad < MAX_PLAYERS; autoconf_pad++)
    {
       if (pad_index_to_xplayer_index(autoconf_pad) > -1)
       {
@@ -217,9 +236,8 @@ static bool winxinput_joypad_init(void)
          input_config_autoconfigure_joypad(autoconf_pad, winxinput_joypad_name(autoconf_pad), winxinput_joypad.ident);
       }
    }
-   
-   return true;
 
+   return true;
 }
 
 static bool winxinput_joypad_query_pad(unsigned pad)
@@ -233,13 +251,15 @@ static bool winxinput_joypad_query_pad(unsigned pad)
 
 static void winxinput_joypad_destroy(void)
 {
-   for (unsigned i = 0; i < 4; ++i)
+   unsigned i;
+   for (i = 0; i < 4; ++i)
       memset(&g_winxinput_states[i], 0, sizeof(winxinput_joypad_state));
-      
+
    FreeLibrary(g_winxinput_dll);
    g_winxinput_dll    = NULL;
    g_XInputGetStateEx = NULL;
-   
+   g_XInputSetState   = NULL;
+
    dinput_joypad.destroy();
    g_xinput_block_pads = false;
 }
@@ -265,18 +285,18 @@ static bool winxinput_joypad_button (unsigned port_num, uint16_t joykey)
 {
    if (joykey == NO_BTN)
       return false;
-   
+
    int xplayer = pad_index_to_xplayer_index(port_num);
    if (xplayer == -1)
       return dinput_joypad.button(port_num, joykey);
-   
+
    if (!(g_winxinput_states[xplayer].connected))
       return false;
-      
+
    //return false;
-     
+
    uint16_t btn_word = g_winxinput_states[xplayer].xstate.Gamepad.wButtons;
-   
+
    if (GET_HAT_DIR(joykey))
    {
       switch (GET_HAT_DIR(joykey))
@@ -292,7 +312,7 @@ static bool winxinput_joypad_button (unsigned port_num, uint16_t joykey)
    {
       // non-hat button
       unsigned num_buttons = g_winxinput_guide_button_supported ? 11 : 10;
-      
+
       if (joykey < num_buttons)
          return btn_word & button_index_to_bitmap_code[joykey];
    }
@@ -303,18 +323,18 @@ static int16_t winxinput_joypad_axis (unsigned port_num, uint32_t joyaxis)
 {
    if (joyaxis == AXIS_NONE)
       return 0;
-      
+
    int xplayer = pad_index_to_xplayer_index(port_num);
-   
+
    if (xplayer == -1)
       return dinput_joypad.axis(port_num, joyaxis);
-   
+
    if (!(g_winxinput_states[xplayer].connected))
       return false;
-   
+
    int16_t val  = 0;
    int     axis = -1;
-   
+
    bool is_neg = false;
    bool is_pos = false;
 
@@ -330,14 +350,14 @@ static int16_t winxinput_joypad_axis (unsigned port_num, uint32_t joyaxis)
    }
 
    XINPUT_GAMEPAD* pad = &(g_winxinput_states[xplayer].xstate.Gamepad);
-   
+
    switch (axis)
    {
       case 0: val = pad->sThumbLX; break;
       case 1: val = pad->sThumbLY; break;
       case 2: val = pad->sThumbRX; break;
       case 3: val = pad->sThumbRY; break;
-      
+
       case 4: val = pad->bLeftTrigger  * 32767 / 255; break; // map 0..255 to 0..32767
       case 5: val = pad->bRightTrigger * 32767 / 255; break;
    }
@@ -346,7 +366,7 @@ static int16_t winxinput_joypad_axis (unsigned port_num, uint32_t joyaxis)
       val = 0;
    else if (is_pos && val < 0)
       val = 0;
-      
+
    // Clamp to avoid overflow error
    if (val == -32768)
       val = -32767;
@@ -356,12 +376,34 @@ static int16_t winxinput_joypad_axis (unsigned port_num, uint32_t joyaxis)
 
 static void winxinput_joypad_poll(void)
 {
-   for (unsigned i = 0; i < 4; ++i)
+   unsigned i;
+   for (i = 0; i < 4; ++i)
       if (g_winxinput_states[i].connected)
          if (g_XInputGetStateEx(i, &(g_winxinput_states[i].xstate)) == ERROR_DEVICE_NOT_CONNECTED)
             g_winxinput_states[i].connected = false;
-         
+
    dinput_joypad.poll();
+}
+
+static bool winxinput_joypad_rumble(unsigned pad, enum retro_rumble_effect effect, uint16_t strength)
+{
+   int xplayer = pad_index_to_xplayer_index(pad);
+   if (xplayer == -1)
+   {
+      if (dinput_joypad.set_rumble)
+         return dinput_joypad.set_rumble(pad, effect, strength);
+      else
+         return false;
+   }
+
+
+   // Consider the low frequency (left) motor the "strong" one.
+   if (effect == RETRO_RUMBLE_STRONG)
+      g_xinput_rumble_states[xplayer].wLeftMotorSpeed = strength;
+   else if (effect == RETRO_RUMBLE_WEAK)
+      g_xinput_rumble_states[xplayer].wRightMotorSpeed = strength;
+
+   return g_XInputSetState(xplayer, &g_xinput_rumble_states[xplayer]) == ERROR_SUCCESS;
 }
 
 const rarch_joypad_driver_t winxinput_joypad = {
@@ -371,6 +413,8 @@ const rarch_joypad_driver_t winxinput_joypad = {
    winxinput_joypad_button,
    winxinput_joypad_axis,
    winxinput_joypad_poll,
+   winxinput_joypad_rumble,
    winxinput_joypad_name,
    "winxinput",
 };
+

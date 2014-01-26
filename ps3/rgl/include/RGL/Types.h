@@ -355,8 +355,6 @@ extern "C" {
       //
       GLenum			DrawBuffer, ReadBuffer;
 
-      GLboolean		ShaderSRGBRemap;
-
       GLboolean		Blending;       // enable for mrt color target 0
       GLenum			BlendEquationRGB;
       GLenum			BlendEquationAlpha;
@@ -385,9 +383,6 @@ extern "C" {
       GLuint	ArrayBuffer;
       GLuint	PixelUnpackBuffer;
       GLuint	TextureBuffer;
-
-      // synchronization objects
-      rglTexNameSpace	fenceObjectNameSpace;
 
       // framebuffer objects
       GLuint			framebuffer;	// GL_FRAMEBUFFER_OES binding

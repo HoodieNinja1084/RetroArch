@@ -1,5 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2013 - Jason Fetters
+ *  Copyright (C) 2013-2014 - Jason Fetters
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -13,172 +14,128 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <pthread.h>
 #include <string.h>
 
 #import "RetroArch_Apple.h"
 #include "rarch_wrapper.h"
+#include "../../frontend/frontend.h"
 
 #include "apple_input.h"
 
 #include "file.h"
 
-char** apple_argv;
-
 id<RetroArch_Platform> apple_platform;
 
-void apple_event_basic_command(void* userdata)
-{
-   switch ((enum basic_event_t)userdata)
-   {
-      case RESET:      rarch_game_reset(); return;
-      case LOAD_STATE: rarch_load_state(); return;
-      case SAVE_STATE: rarch_save_state(); return;
-      case QUIT:       g_extern.system.shutdown = true; return;
-   }
-}
-
-void apple_event_set_state_slot(void* userdata)
-{
-   g_extern.state_slot = (uint32_t)userdata;
-}
-
-void apple_event_show_rgui(void* userdata)
-{
-   const bool in_menu = g_extern.lifecycle_mode_state & (1 << MODE_MENU);
-   g_extern.lifecycle_mode_state &= ~(1ULL << (in_menu ? MODE_MENU : MODE_GAME));
-   g_extern.lifecycle_mode_state |=  (1ULL << (in_menu ? MODE_GAME : MODE_MENU));
-}
-
-static void event_reload_config(void* userdata)
-{
-   objc_clear_config_hack();
-
-   uninit_drivers();
-   config_load();
-   init_drivers();
-}
-
-void apple_refresh_config()
-{
-   if (apple_is_running)
-      apple_frontend_post_event(&event_reload_config, 0);
-   else
-      objc_clear_config_hack();
-}
-
-pthread_mutex_t stasis_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static void event_stasis(void* userdata)
-{
-   uninit_drivers();
-   pthread_mutex_lock(&stasis_mutex);
-   pthread_mutex_unlock(&stasis_mutex);
-   init_drivers();
-}
-
-void apple_enter_stasis()
-{
-   if (apple_is_running)
-   {
-      pthread_mutex_lock(&stasis_mutex);
-      apple_frontend_post_event(event_stasis, 0);
-   }
-}
-
-void apple_exit_stasis(bool reload_config)
-{
-   if (reload_config)
-   {
-      objc_clear_config_hack();
-      config_load();
-   }
-
-   if (apple_is_running)
-      pthread_mutex_unlock(&stasis_mutex);
-}
-
 #pragma mark EMULATION
-static pthread_t apple_retro_thread;
-bool apple_is_paused;
 bool apple_is_running;
 bool apple_use_tv_mode;
-RAModuleInfo* apple_core;
+NSString* apple_core;
 
-void* rarch_main_spring(void* args)
+static CFRunLoopObserverRef iterate_observer;
+
+static void apple_rarch_exited()
 {
-   char** argv = args;
-
-   uint32_t argc = 0;
-   while (argv && argv[argc]) argc++;
+   NSString* used_core = apple_core;
+   apple_core = 0;
    
-   if (rarch_main(argc, argv))
-   {
-      rarch_main_clear_state();
-      dispatch_async_f(dispatch_get_main_queue(), (void*)1, apple_rarch_exited);
-   }
-   
-   return 0;
-}
-
-void apple_run_core(RAModuleInfo* core, const char* file)
-{
-   if (!apple_is_running)
-   {
-      [apple_platform loadingCore:core withFile:file];
-
-      apple_core = core;
-      apple_is_running = true;
-
-      static char config_path[PATH_MAX];
-      static char core_path[PATH_MAX];
-      static char file_path[PATH_MAX];
-
-      if (!apple_argv)
-      {
-         NSString* config_to_use = apple_core ? apple_core.configFile : apple_platform.globalConfigFile;
-         strlcpy(config_path, config_to_use.UTF8String, sizeof(config_path));
-
-         static const char* const argv_game[] = { "retroarch", "-c", config_path, "-L", core_path, file_path, 0 };
-         static const char* const argv_menu[] = { "retroarch", "-c", config_path, "--menu", 0 };
-   
-         if (file && core)
-         {
-            strlcpy(core_path, apple_core.path.UTF8String, sizeof(core_path));
-            strlcpy(file_path, file, sizeof(file_path));
-         }
-         
-         apple_argv = (char**)((file && core) ? argv_game : argv_menu);
-      }
-      
-      if (pthread_create(&apple_retro_thread, 0, rarch_main_spring, apple_argv))
-      {
-         apple_argv = 0;      
-      
-         apple_rarch_exited((void*)1);
-         return;
-      }
-      
-      apple_argv = 0;
-      
-      pthread_detach(apple_retro_thread);
-   }
-}
-
-void apple_rarch_exited(void* result)
-{
-   if (result)
-      apple_display_alert(@"Failed to load game.", 0);
-
-   RAModuleInfo* used_core = apple_core;
-   apple_core = nil;
-
    if (apple_is_running)
    {
       apple_is_running = false;
       [apple_platform unloadingCore:used_core];
    }
-
+   
+#ifdef OSX
+   [used_core release];
+#endif
+   
    if (apple_use_tv_mode)
       apple_run_core(nil, 0);
+}
+
+static void do_iteration()
+{
+    bool iterate = iterate_observer && apple_is_running && !g_extern.is_paused;
+    
+    if (!iterate)
+        return;
+    
+    if (main_entry_iterate(0, NULL, NULL))
+    {
+        main_exit(NULL);
+        apple_rarch_exited();
+    }
+    else
+        CFRunLoopWakeUp(CFRunLoopGetMain());
+}
+
+void apple_start_iteration()
+{
+   if (iterate_observer)
+       return;
+    
+    iterate_observer = CFRunLoopObserverCreate(0, kCFRunLoopBeforeWaiting, true, 0, do_iteration, 0);
+    CFRunLoopAddObserver(CFRunLoopGetMain(), iterate_observer, kCFRunLoopCommonModes);
+}
+
+void apple_stop_iteration()
+{
+   if (!iterate_observer)
+       return;
+    
+    CFRunLoopObserverInvalidate(iterate_observer);
+    CFRelease(iterate_observer);
+    iterate_observer = 0;
+}
+
+void apple_run_core(NSString* core, const char* file)
+{
+   if (apple_is_running)
+       return;
+    
+    [apple_platform loadingCore:core withFile:file];
+    
+    apple_core = core;
+    apple_is_running = true;
+
+   static char core_path[PATH_MAX];
+   static char file_path[PATH_MAX];
+
+   if (file && core)
+   {
+      strlcpy(core_path, apple_core.UTF8String, sizeof(core_path));
+      strlcpy(file_path, file, sizeof(file_path));
+   }
+   
+#ifdef IOS
+    static char config_path[PATH_MAX];
+   
+    if (apple_core_info_has_custom_config(apple_core.UTF8String))
+        apple_core_info_get_custom_config(apple_core.UTF8String, config_path, sizeof(config_path));
+    else
+        strlcpy(config_path, apple_platform.globalConfigFile.UTF8String, sizeof(config_path));
+    
+    static const char* const argv_game[] = { "retroarch", "-c", config_path, "-L", core_path, file_path, 0 };
+    static const char* const argv_menu[] = { "retroarch", "-c", config_path, "--menu", 0 };
+    
+    int argc = (file && core) ? 6 : 4;
+    char** argv = (char**)((file && core) ? argv_game : argv_menu);
+#else
+   static const char* const argv_game[] = { "retroarch", "-L", core_path, file_path, 0 };
+   static const char* const argv_menu[] = { "retroarch", "--menu", 0 };
+
+   int argc = (file && core) ? 4 : 2;
+   char** argv = (char**)((file && core) ? argv_game : argv_menu);
+#endif
+
+    if (apple_rarch_load_content(argc, argv))
+    {
+        char basedir[256];
+        fill_pathname_basedir(basedir, file ? file : "", sizeof(basedir));
+        if (file && access(basedir, R_OK | W_OK | X_OK))
+            apple_display_alert(BOXSTRING("The directory containing the selected file must have write premissions. This will prevent zipped content from loading, and will cause some cores to not function."), 0);
+        else
+            apple_display_alert(BOXSTRING("Failed to load content."), 0);
+        
+        apple_rarch_exited();
+    }
 }

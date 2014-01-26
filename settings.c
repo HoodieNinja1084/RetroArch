@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -89,7 +89,7 @@ const char *config_get_default_video(void)
       case VIDEO_XDK_D3D:
          return "xdk_d3d";
       case VIDEO_D3D9:
-         return "d3d9";
+         return "d3d";
       case VIDEO_PSP1:
          return "psp1";
       case VIDEO_VITA:
@@ -135,6 +135,8 @@ const char *config_get_default_input(void)
          return "gx";
       case INPUT_LINUXRAW:
          return "linuxraw";
+      case INPUT_UDEV:
+         return "udev";
       case INPUT_APPLE:
          return "apple_input";
       case INPUT_QNX:
@@ -148,12 +150,84 @@ const char *config_get_default_input(void)
    }
 }
 
+#ifdef HAVE_OSK
+const char *config_get_default_osk(void)
+{
+   switch (OSK_DEFAULT_DRIVER)
+   {
+      case OSK_PS3:
+         return "ps3osk";
+      case OSK_NULL:
+         return "null";
+      default:
+         return NULL;
+   }
+}
+#endif
+
+#ifdef HAVE_CAMERA
+const char *config_get_default_camera(void)
+{
+   switch (CAMERA_DEFAULT_DRIVER)
+   {
+      case CAMERA_V4L2:
+         return "video4linux2";
+      case CAMERA_RWEBCAM:
+         return "rwebcam";
+      case CAMERA_NULL:
+         return "null";
+      case CAMERA_ANDROID:
+         return "android";
+      case CAMERA_IOS:
+         return "ios";
+      default:
+         return NULL;
+   }
+}
+#endif
+
+#ifdef HAVE_LOCATION
+const char *config_get_default_location(void)
+{
+   switch (LOCATION_DEFAULT_DRIVER)
+   {
+      case LOCATION_ANDROID:
+         return "android";
+      case LOCATION_APPLE:
+         return "apple";
+      default:
+         return NULL;
+   }
+}
+#endif
+
+
 void config_set_defaults(void)
 {
+   unsigned i, j;
    const char *def_video = config_get_default_video();
    const char *def_audio = config_get_default_audio();
    const char *def_input = config_get_default_input();
+#ifdef HAVE_CAMERA
+   const char *def_camera = config_get_default_camera();
 
+   if (def_camera)
+      strlcpy(g_settings.camera.driver, def_camera, sizeof(g_settings.camera.driver));
+#endif
+
+#ifdef HAVE_LOCATION
+   const char *def_location = config_get_default_location();
+
+   if (def_location)
+      strlcpy(g_settings.location.driver, def_location, sizeof(g_settings.location.driver));
+#endif
+
+#ifdef HAVE_OSK
+   const char *def_osk = config_get_default_osk();
+
+   if (def_osk)
+      strlcpy(g_settings.osk.driver, def_osk, sizeof(g_settings.osk.driver));
+#endif
    if (def_video)
       strlcpy(g_settings.video.driver, def_video, sizeof(g_settings.video.driver));
    if (def_audio)
@@ -230,24 +304,30 @@ void config_set_defaults(void)
    g_settings.stdin_cmd_enable     = stdin_cmd_enable;
    g_settings.game_history_size    = game_history_size;
 
+   g_settings.rgui_show_start_screen = rgui_show_start_screen;
+
    rarch_assert(sizeof(g_settings.input.binds[0]) >= sizeof(retro_keybinds_1));
    rarch_assert(sizeof(g_settings.input.binds[1]) >= sizeof(retro_keybinds_rest));
    memcpy(g_settings.input.binds[0], retro_keybinds_1, sizeof(retro_keybinds_1));
-   for (unsigned i = 1; i < MAX_PLAYERS; i++)
+#ifdef RARCH_CONSOLE
+   memcpy(g_settings.input.menu_binds, retro_keybinds_menu, sizeof(retro_keybinds_menu));
+#endif
+   for (i = 1; i < MAX_PLAYERS; i++)
       memcpy(g_settings.input.binds[i], retro_keybinds_rest, sizeof(retro_keybinds_rest));
 
-   for (unsigned i = 0; i < MAX_PLAYERS; i++)
+   for (i = 0; i < MAX_PLAYERS; i++)
    {
-      for (unsigned j = 0; j < RARCH_BIND_LIST_END; j++)
+      for (j = 0; j < RARCH_BIND_LIST_END; j++)
       {
          g_settings.input.autoconf_binds[i][j].joykey = NO_BTN;
          g_settings.input.autoconf_binds[i][j].joyaxis = AXIS_NONE;
       }
    }
+   memset(g_settings.input.autoconfigured, 0, sizeof(g_settings.input.autoconfigured));
 
    // Verify that binds are in proper order.
-   for (int i = 0; i < MAX_PLAYERS; i++)
-      for (int j = 0; j < RARCH_BIND_LIST_END; j++)
+   for (i = 0; i < MAX_PLAYERS; i++)
+      for (j = 0; j < RARCH_BIND_LIST_END; j++)
          if (g_settings.input.binds[i][j].valid)
             rarch_assert(j == g_settings.input.binds[i][j].id);
 
@@ -255,17 +335,19 @@ void config_set_defaults(void)
    g_settings.input.netplay_client_swap_input = netplay_client_swap_input;
    g_settings.input.turbo_period = turbo_period;
    g_settings.input.turbo_duty_cycle = turbo_duty_cycle;
-   g_settings.input.overlay_opacity = 1.0f;
+   g_settings.input.overlay_opacity = 0.7f;
    g_settings.input.overlay_scale = 1.0f;
    g_settings.input.debug_enable = input_debug_enable;
    g_settings.input.autodetect_enable = input_autodetect_enable;
+   *g_settings.input.keyboard_layout = '\0';
 #ifdef ANDROID
    g_settings.input.back_behavior = BACK_BUTTON_QUIT;
 #endif
 
-   for (int i = 0; i < MAX_PLAYERS; i++)
+   for (i = 0; i < MAX_PLAYERS; i++)
    {
       g_settings.input.joypad_map[i] = i;
+      g_settings.input.analog_dpad_mode[i] = ANALOG_DPAD_NONE;
       if (!g_extern.has_set_libretro_device[i])
          g_settings.input.libretro_device[i] = RETRO_DEVICE_JOYPAD;
    }
@@ -275,8 +357,30 @@ void config_set_defaults(void)
    g_extern.console.screen.viewports.custom_vp.x = 0;
    g_extern.console.screen.viewports.custom_vp.y = 0;
 
+   // Make sure settings from other configs carry over into defaults for another config.
+   if (!g_extern.has_set_save_path)
+      *g_extern.savefile_dir = '\0';
+   if (!g_extern.has_set_state_path)
+      *g_extern.savestate_dir = '\0';
+   *g_settings.libretro_info_path = '\0';
+   *g_settings.core_options_path = '\0';
+   *g_settings.game_history_path = '\0';
+   *g_settings.cheat_database = '\0';
+   *g_settings.cheat_settings_path = '\0';
+   *g_settings.screenshot_directory = '\0';
+   *g_settings.system_directory = '\0';
+   *g_settings.input.autoconfig_dir = '\0';
+   *g_settings.input.overlay = '\0';
+   *g_settings.content_directory = '\0';
+   *g_settings.video.shader_path = '\0';
+   *g_settings.video.shader_dir = '\0';
+#ifdef HAVE_MENU
+   *g_settings.rgui_content_directory = '\0';
+   *g_settings.rgui_config_directory = '\0';
+#endif
+
 #ifdef RARCH_CONSOLE
-   g_extern.lifecycle_mode_state |= ((1ULL << MODE_INFO_DRAW) | (1ULL << MODE_MENU));
+   g_extern.lifecycle_state |= (1ULL << MODE_MENU_PREINIT);
 
    strlcpy(g_settings.system_directory, default_paths.system_dir, sizeof(g_settings.system_directory));
 
@@ -284,19 +388,18 @@ void config_set_defaults(void)
    g_settings.video.msg_pos_y = 0.90f;
    g_settings.video.aspect_ratio = -1.0f;
 
+   g_settings.core_specific_config = default_core_specific_config;
+
    // g_extern
    strlcpy(g_extern.savefile_dir, default_paths.sram_dir, sizeof(g_extern.savefile_dir));
    g_extern.console.screen.gamma_correction = DEFAULT_GAMMA;
-   g_extern.lifecycle_mode_state |= (1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
-   g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
-   g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
-   g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
+   g_extern.lifecycle_state |= (1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
+   g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
+   g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
+   g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
 
    g_extern.console.screen.resolutions.current.id = 0;
    strlcpy(g_extern.savestate_dir, default_paths.savestate_dir, sizeof(g_extern.savestate_dir));
-#ifdef HAVE_RMENU
-   strlcpy(g_extern.menu_texture_path, default_paths.menu_border_file, sizeof(g_extern.menu_texture_path));
-#endif
 
    g_extern.state_slot = 0;
    g_extern.audio_data.mute = 0;
@@ -309,46 +412,93 @@ void config_set_defaults(void)
 #endif
    
 #ifdef HAVE_OVERLAY
-#if defined(__QNX__)
-   strlcpy(g_extern.overlay_dir, "app/native/overlays/", sizeof(g_extern.overlay_dir));
-   RARCH_LOG("Setting default overlay %s ...\n", "app/native/overlays/snes-landscape.cfg");
-   strlcpy(g_settings.input.overlay, "app/native/overlays/snes-landscape.cfg", sizeof(g_settings.input.overlay));
-#elif defined(IOS)
-   strlcpy(g_extern.overlay_dir, "/Applications/RetroArch.app/overlays/", sizeof(g_extern.overlay_dir));
-#elif defined(ANDROID)
-   strlcpy(g_extern.overlay_dir, "/data/data/org.retroarch/overlays/", sizeof(g_extern.overlay_dir));
+   if (default_overlay_dir)
+   {
+      fill_pathname_expand_special(g_extern.overlay_dir, default_overlay_dir, sizeof(g_extern.overlay_dir));
+#if defined(__QNX__) || defined(IOS)
+      fill_pathname_join(g_settings.input.overlay, g_extern.overlay_dir, "snes/snes.cfg", sizeof(g_settings.input.overlay));
 #endif
+   }
 #endif
 
-#if defined(HAVE_CG) || defined(HAVE_GLSL) || defined(HAVE_HLSL)
-#if defined(__QNX__)
-   strlcpy(g_settings.video.shader_dir, "/app/native/shaders_glsl/", sizeof(g_settings.video.shader_dir));
-#elif defined(IOS)
-   strlcpy(g_settings.video.shader_dir, "/Applications/RetroArch.app/shaders_glsl/", sizeof(g_settings.video.shader_dir));
-#elif defined(ANDROID)
-   strlcpy(g_settings.video.shader_dir, "/data/data/org.retroarch/shaders_glsl/", sizeof(g_settings.video.shader_dir));
-#endif
-#endif
+   if (default_shader_dir)
+      fill_pathname_expand_special(g_settings.video.shader_dir, default_shader_dir, sizeof(g_settings.video.shader_dir));
+
+   if (default_libretro_path && !g_extern.has_set_libretro)
+      fill_pathname_expand_special(g_settings.libretro, default_libretro_path, sizeof(g_settings.libretro));
+
+   if (default_libretro_info_path)
+      fill_pathname_expand_special(g_settings.libretro_info_path, default_libretro_info_path, sizeof(g_settings.libretro_info_path));
+
+   if (default_config_path)
+      fill_pathname_expand_special(g_extern.config_path, default_config_path, sizeof(g_extern.config_path));
 
    g_extern.config_save_on_exit = config_save_on_exit;
 
-#if defined(HAVE_RMENU) || defined(HAVE_RGUI)
    /* Avoid reloading config on every ROM load */
-   g_extern.block_config_read = true;
-#endif
+   g_extern.block_config_read = default_block_config_read;
 
    rarch_init_msg_queue();
 }
 
 static void parse_config_file(void);
 
+static void config_load_core_specific(void)
+{
+   *g_extern.core_specific_config_path = '\0';
+
+   if (!*g_settings.libretro
+#ifdef HAVE_DYNAMIC
+      || g_extern.libretro_dummy
+#endif
+      )
+      return;
+
+   if (*g_settings.rgui_config_directory)
+   {
+      path_resolve_realpath(g_settings.rgui_config_directory, sizeof(g_settings.rgui_config_directory));
+      strlcpy(g_extern.core_specific_config_path, g_settings.rgui_config_directory, sizeof(g_extern.core_specific_config_path));
+   }
+   else
+   {
+      // Use original config file's directory as a fallback.
+      fill_pathname_basedir(g_extern.core_specific_config_path, g_extern.config_path, sizeof(g_extern.core_specific_config_path));
+   }
+
+   fill_pathname_dir(g_extern.core_specific_config_path, g_settings.libretro, ".cfg", sizeof(g_extern.core_specific_config_path));
+
+   if (g_settings.core_specific_config)
+   {
+      char tmp[PATH_MAX];
+      strlcpy(tmp, g_settings.libretro, sizeof(tmp));
+      RARCH_LOG("Loading core-specific config from: %s.\n", g_extern.core_specific_config_path);
+
+      if (!config_load_file(g_extern.core_specific_config_path, true))
+         RARCH_WARN("Core-specific config not found, reusing last config.\n");
+
+      // Force some parameters which are implied when using core specific configs.
+
+      // Don't have the core config file overwrite the libretro path.
+      strlcpy(g_settings.libretro, tmp, sizeof(g_settings.libretro));
+      // This must be true for core specific configs.
+      g_settings.core_specific_config = true;
+   }
+}
+
 void config_load(void)
 {
+   // Flush out per-core configs before loading a new config.
+   if (*g_extern.core_specific_config_path && g_extern.config_save_on_exit && g_settings.core_specific_config)
+      config_save_file(g_extern.core_specific_config_path);
+
    if (!g_extern.block_config_read)
    {
       config_set_defaults();
       parse_config_file();
    }
+
+   // Per-core config handling.
+   config_load_core_specific();
 }
 
 static config_file_t *open_default_config_file(void)
@@ -373,8 +523,66 @@ static config_file_t *open_default_config_file(void)
       }
    }
 
+   // Try to create a new config file.
+   if (!conf)
+   {
+      conf = config_file_new(NULL);
+      bool saved = false;
+      if (conf) // Since this is a clean config file, we can safely use config_save_on_exit.
+      {
+         fill_pathname_resolve_relative(conf_path, app_path, "retroarch.cfg", sizeof(conf_path));
+         config_set_bool(conf, "config_save_on_exit", true);
+         saved = config_file_write(conf, conf_path);
+      }
+
+      if (saved)
+         RARCH_WARN("Created new config file in: \"%s\".\n", conf_path); // WARN here to make sure user has a good chance of seeing it.
+      else
+      {
+         RARCH_ERR("Failed to create new config file in: \"%s\".\n", conf_path);
+         config_file_free(conf);
+         conf = NULL;
+      }
+   }
+
    if (conf)
       strlcpy(g_extern.config_path, conf_path, sizeof(g_extern.config_path));
+#elif defined(OSX)
+   char conf_path[PATH_MAX];
+   const char *home = getenv("HOME");
+
+   if (!home)
+      return NULL;
+
+   fill_pathname_join(conf_path, home, "Library/Application Support/RetroArch", sizeof(conf_path));
+   path_mkdir(conf_path);
+      
+   fill_pathname_join(conf_path, conf_path, "retroarch.cfg", sizeof(conf_path));
+   conf = config_file_new(conf_path);
+
+   if (!conf)
+   {
+      conf = config_file_new(NULL);
+      bool saved = false;
+      if (conf)
+      {
+         config_set_bool(conf, "config_save_on_exit", true);
+         saved = config_file_write(conf, conf_path);
+      }
+      
+      if (saved)
+         RARCH_WARN("Created new config file in: \"%s\".\n", conf_path); // WARN here to make sure user has a good chance of seeing it.
+      else
+      {
+         RARCH_ERR("Failed to create new config file in: \"%s\".\n", conf_path);
+         config_file_free(conf);
+         conf = NULL;
+      }
+   }
+
+   if (conf)
+      strlcpy(g_extern.config_path, conf_path, sizeof(g_extern.config_path));
+
 #elif !defined(__CELLOS_LV2__) && !defined(_XBOX)
    char conf_path[PATH_MAX];
    const char *xdg  = getenv("XDG_CONFIG_HOME");
@@ -382,9 +590,9 @@ static config_file_t *open_default_config_file(void)
 
    // XDG_CONFIG_HOME falls back to $HOME/.config.
    if (xdg)
-      snprintf(conf_path, sizeof(conf_path), "%s/retroarch/retroarch.cfg", xdg);
+      fill_pathname_join(conf_path, xdg, "retroarch/retroarch.cfg", sizeof(conf_path));
    else if (home)
-      snprintf(conf_path, sizeof(conf_path), "%s/.config/retroarch/retroarch.cfg", home);
+      fill_pathname_join(conf_path, home, ".config/retroarch/retroarch.cfg", sizeof(conf_path));
 
    if (xdg || home)
    {
@@ -395,20 +603,52 @@ static config_file_t *open_default_config_file(void)
    // Fallback to $HOME/.retroarch.cfg.
    if (!conf && home)
    {
-      snprintf(conf_path, sizeof(conf_path), "%s/.retroarch.cfg", home);
+      fill_pathname_join(conf_path, home, ".retroarch.cfg", sizeof(conf_path));
       RARCH_LOG("Looking for config in: \"%s\".\n", conf_path);
       conf = config_file_new(conf_path);
    }
 
-   // Try this as a last chance ...
-   if (!conf)
+   // Try to create a new config file.
+   if (!conf && (home || xdg))
    {
+      // XDG_CONFIG_HOME falls back to $HOME/.config.
+      if (xdg)
+         fill_pathname_join(conf_path, xdg, "retroarch/retroarch.cfg", sizeof(conf_path));
+      else if (home)
+         fill_pathname_join(conf_path, home, ".config/retroarch/retroarch.cfg", sizeof(conf_path));
+
+      char basedir[PATH_MAX];
+      fill_pathname_basedir(basedir, conf_path, sizeof(basedir));
+
+      if (path_mkdir(basedir))
+      {
 #ifndef GLOBAL_CONFIG_DIR
 #define GLOBAL_CONFIG_DIR "/etc"
 #endif
-      fill_pathname_join(conf_path, GLOBAL_CONFIG_DIR, "retroarch.cfg", sizeof(conf_path));
-      RARCH_LOG("Looking for config in: \"%s\".\n", conf_path);
-      conf = config_file_new(conf_path);
+         char skeleton_conf[PATH_MAX];
+         fill_pathname_join(skeleton_conf, GLOBAL_CONFIG_DIR, "retroarch.cfg", sizeof(skeleton_conf));
+         conf = config_file_new(skeleton_conf);
+         if (conf)
+            RARCH_WARN("Using skeleton config \"%s\" as base for a new config file.\n", skeleton_conf);
+         else
+            conf = config_file_new(NULL);
+
+         bool saved = false;
+         if (conf)
+         {
+            config_set_bool(conf, "config_save_on_exit", true); // Since this is a clean config file, we can safely use config_save_on_exit.
+            saved = config_file_write(conf, conf_path);
+         }
+
+         if (saved)
+            RARCH_WARN("Created new config file in: \"%s\".\n", conf_path); // WARN here to make sure user has a good chance of seeing it.
+         else
+         {
+            RARCH_ERR("Failed to create new config file in: \"%s\".\n", conf_path);
+            config_file_free(conf);
+            conf = NULL;
+         }
+      }
    }
 
    if (conf)
@@ -426,12 +666,12 @@ static void parse_config_file(void)
    if (*g_extern.config_path)
    {
       RARCH_LOG("Loading config from: %s.\n", g_extern.config_path);
-      ret = config_load_file(g_extern.config_path);
+      ret = config_load_file(g_extern.config_path, false);
    }
    else
    {
       RARCH_LOG("Loading default config.\n");
-      ret = config_load_file(NULL);
+      ret = config_load_file(NULL, false);
       if (*g_extern.config_path)
          RARCH_LOG("Found default config: %s.\n", g_extern.config_path);
    }
@@ -445,8 +685,9 @@ static void parse_config_file(void)
    }
 }
 
-bool config_load_file(const char *path)
+bool config_load_file(const char *path, bool set_defaults)
 {
+   unsigned i;
    config_file_t *conf = NULL;
 
    if (path)
@@ -460,6 +701,9 @@ bool config_load_file(const char *path)
 
    if (conf == NULL)
       return true;
+
+   if (set_defaults)
+      config_set_defaults();
 
    char *save;
    char tmp_append_path[PATH_MAX]; // Don't destroy append_config_path.
@@ -532,18 +776,8 @@ bool config_load_file(const char *path)
    /* TODO - will be refactored later to make it more clean - it's more 
     * important that it works for consoles right now */
 
-   for (unsigned i = 0; i < MAX_PLAYERS; i++)
-   {
-      char cfg[64];
-      snprintf(cfg, sizeof(cfg), "input_dpad_emulation_p%u", i + 1);
-      CONFIG_GET_INT(input.dpad_emulation[i], cfg);
-      snprintf(cfg, sizeof(cfg), "input_device_p%u", i + 1);
-      CONFIG_GET_INT(input.device[i], cfg);
-   }
-
    CONFIG_GET_BOOL_EXTERN(console.screen.gamma_correction, "gamma_correction");
 
-   bool msg_enable = false;
    bool triple_buffering_enable = false;
    bool custom_bgm_enable = false;
    bool flicker_filter_enable = false;
@@ -554,44 +788,36 @@ bool config_load_file(const char *path)
       strlcpy(g_extern.menu_texture_path, tmp_str, sizeof(g_extern.menu_texture_path));
 #endif
 
-   if (config_get_bool(conf, "info_msg_enable", &msg_enable))
-   {
-      if (msg_enable)
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_INFO_DRAW);
-      else 
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_INFO_DRAW);
-   }
-
    if (config_get_bool(conf, "triple_buffering_enable", &triple_buffering_enable))
    {
       if (triple_buffering_enable)
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
+         g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
       else
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
+         g_extern.lifecycle_state &= ~(1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
    }
 
    if (config_get_bool(conf, "custom_bgm_enable", &custom_bgm_enable))
    {
       if (custom_bgm_enable)
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
+         g_extern.lifecycle_state |= (1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
       else
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
+         g_extern.lifecycle_state &= ~(1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
    }
 
    if (config_get_bool(conf, "flicker_filter_enable", &flicker_filter_enable))
    {
       if (flicker_filter_enable)
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
+         g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
       else 
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
+         g_extern.lifecycle_state &= ~(1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
    }
 
    if (config_get_bool(conf, "soft_filter_enable", &soft_filter_enable))
    {
       if (soft_filter_enable)
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
+         g_extern.lifecycle_state |= (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
       else 
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
+         g_extern.lifecycle_state &= ~(1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
    }
 
    CONFIG_GET_INT_EXTERN(console.screen.flicker_filter_index, "flicker_filter_index");
@@ -600,10 +826,9 @@ bool config_load_file(const char *path)
    CONFIG_GET_INT_EXTERN(console.sound.volume_level, "sound_volume_level");
 #endif
    CONFIG_GET_INT_EXTERN(console.screen.resolutions.current.id, "current_resolution_id");
-   CONFIG_GET_INT_EXTERN(state_slot, "state_slot");
-   CONFIG_GET_INT_EXTERN(audio_data.mute, "audio_mute");
    CONFIG_GET_INT_EXTERN(console.sound.mode, "sound_mode");
 #endif
+   CONFIG_GET_INT_EXTERN(state_slot, "state_slot");
 
    CONFIG_GET_INT_EXTERN(console.screen.viewports.custom_vp.x, "custom_viewport_x");
    CONFIG_GET_INT_EXTERN(console.screen.viewports.custom_vp.y, "custom_viewport_y");
@@ -633,11 +858,14 @@ bool config_load_file(const char *path)
    CONFIG_GET_FLOAT(input.axis_threshold, "input_axis_threshold");
    CONFIG_GET_BOOL(input.netplay_client_swap_input, "netplay_client_swap_input");
 
-   for (unsigned i = 0; i < MAX_PLAYERS; i++)
+   for (i = 0; i < MAX_PLAYERS; i++)
    {
       char buf[64];
       snprintf(buf, sizeof(buf), "input_player%u_joypad_index", i + 1);
       CONFIG_GET_INT(input.joypad_map[i], buf);
+
+      snprintf(buf, sizeof(buf), "input_player%u_analog_dpad_mode", i + 1);
+      CONFIG_GET_INT(input.analog_dpad_mode[i], buf);
 
       if (!g_extern.has_set_libretro_device[i])
       {
@@ -657,15 +885,24 @@ bool config_load_file(const char *path)
    CONFIG_GET_FLOAT(audio.rate_control_delta, "audio_rate_control_delta");
    CONFIG_GET_FLOAT(audio.volume, "audio_volume");
 
+#ifdef HAVE_CAMERA
+   CONFIG_GET_STRING(camera.device, "camera_device");
+#endif
+
    CONFIG_GET_STRING(video.driver, "video_driver");
    CONFIG_GET_STRING(video.gl_context, "video_gl_context");
    CONFIG_GET_STRING(audio.driver, "audio_driver");
    CONFIG_GET_PATH(audio.dsp_plugin, "audio_dsp_plugin");
    CONFIG_GET_STRING(input.driver, "input_driver");
    CONFIG_GET_STRING(input.joypad_driver, "input_joypad_driver");
+   CONFIG_GET_STRING(input.keyboard_layout, "input_keyboard_layout");
 
-   if (!*g_settings.libretro)
+   if (!g_extern.has_set_libretro)
       CONFIG_GET_PATH(libretro, "libretro_path");
+
+   CONFIG_GET_BOOL(fps_show, "fps_show");
+
+   CONFIG_GET_PATH(libretro_info_path, "libretro_info_path");
 
    CONFIG_GET_PATH(core_options_path, "core_options_path");
    CONFIG_GET_PATH(screenshot_directory, "screenshot_directory");
@@ -680,10 +917,17 @@ bool config_load_file(const char *path)
       }
    }
 
-#ifdef HAVE_RGUI
-   CONFIG_GET_PATH(rgui_browser_directory, "rgui_browser_directory");
-   if (!strcmp(g_settings.rgui_browser_directory, "default"))
-      *g_settings.rgui_browser_directory = '\0';
+   CONFIG_GET_PATH(content_directory, "content_directory");
+   if (!strcmp(g_settings.content_directory, "default"))
+      *g_settings.content_directory = '\0';
+#ifdef HAVE_MENU
+   CONFIG_GET_PATH(rgui_content_directory, "rgui_browser_directory");
+   if (!strcmp(g_settings.rgui_content_directory, "default"))
+      *g_settings.rgui_content_directory = '\0';
+   CONFIG_GET_PATH(rgui_config_directory, "rgui_config_directory");
+   if (!strcmp(g_settings.rgui_config_directory, "default"))
+      *g_settings.rgui_config_directory = '\0';
+   CONFIG_GET_BOOL(rgui_show_start_screen, "rgui_show_start_screen");
 #endif
 
 #ifdef HAVE_OVERLAY
@@ -784,6 +1028,8 @@ bool config_load_file(const char *path)
 
    config_read_keybinds_conf(conf);
 
+   CONFIG_GET_BOOL(core_specific_config, "core_specific_config");
+
    config_file_free(conf);
    return true;
 }
@@ -823,7 +1069,8 @@ static void read_keybinds_axis(config_file_t *conf, unsigned player, unsigned in
 
 static void read_keybinds_player(config_file_t *conf, unsigned player)
 {
-   for (unsigned i = 0; input_config_bind_map[i].valid; i++)
+   unsigned i;
+   for (i = 0; input_config_bind_map[i].valid; i++)
    {
       struct retro_keybind *bind = &g_settings.input.binds[player][i];
       if (!bind->valid)
@@ -837,7 +1084,8 @@ static void read_keybinds_player(config_file_t *conf, unsigned player)
 
 static void config_read_keybinds_conf(config_file_t *conf)
 {
-   for (unsigned i = 0; i < MAX_PLAYERS; i++)
+   unsigned i;
+   for (i = 0; i < MAX_PLAYERS; i++)
       read_keybinds_player(conf, i);
 }
 
@@ -857,23 +1105,8 @@ static void save_keybind_key(config_file_t *conf, const char *prefix, const char
    char key[64];
    snprintf(key, sizeof(key), "%s_%s", prefix, base);
 
-   char ascii[2] = {0};
-   const char *btn = ascii;
-
-   if (bind->key >= RETROK_a && bind->key <= RETROK_z)
-      ascii[0] = 'a' + (bind->key - RETROK_a);
-   else
-   {
-      for (unsigned i = 0; input_config_key_map[i].str; i++)
-      {
-         if (input_config_key_map[i].key == bind->key)
-         {
-            btn = input_config_key_map[i].str;
-            break;
-         }
-      }
-   }
-
+   char btn[64];
+   input_translate_rk_to_str(bind->key, btn, sizeof(btn));
    config_set_string(conf, key, btn);
 }
 
@@ -883,7 +1116,7 @@ static void save_keybind_hat(config_file_t *conf, const char *key, const struct 
    unsigned hat = GET_HAT(bind->joykey);
    const char *dir = NULL;
 
-   switch (GET_HAT_DIR(hat))
+   switch (GET_HAT_DIR(bind->joykey))
    {
       case HAT_UP_MASK:
          dir = "up";
@@ -970,7 +1203,8 @@ static void save_keybind(config_file_t *conf, const char *prefix, const char *ba
 
 static void save_keybinds_player(config_file_t *conf, unsigned player)
 {
-   for (unsigned i = 0; input_config_bind_map[i].valid; i++)
+   unsigned i = 0;
+   for (i = 0; input_config_bind_map[i].valid; i++)
    {
       const char *prefix = input_config_get_prefix(player, input_config_bind_map[i].meta);
       if (prefix)
@@ -980,6 +1214,7 @@ static void save_keybinds_player(config_file_t *conf, unsigned player)
 
 bool config_save_file(const char *path)
 {
+   unsigned i = 0;
    config_file_t *conf = config_file_new(path);
    if (!conf)
       conf = config_file_new(NULL);
@@ -988,19 +1223,25 @@ bool config_save_file(const char *path)
 
    RARCH_LOG("Saving config at path: \"%s\"\n", path);
 
-   config_set_string(conf, "libretro_path", g_settings.libretro);
-   config_set_string(conf, "cheat_database_path", g_settings.cheat_database);
+   config_set_bool(conf, "fps_show", g_settings.fps_show);
+   config_set_path(conf, "libretro_path", g_settings.libretro);
+   config_set_path(conf, "libretro_info_path", g_settings.libretro_info_path);
+   config_set_path(conf, "cheat_database_path", g_settings.cheat_database);
    config_set_bool(conf, "rewind_enable", g_settings.rewind_enable);
    config_set_int(conf, "rewind_granularity", g_settings.rewind_granularity);
-   config_set_string(conf, "video_shader", g_settings.video.shader_path);
+   config_set_path(conf, "video_shader", g_settings.video.shader_path);
    config_set_bool(conf, "video_shader_enable", g_settings.video.shader_enable);
    config_set_float(conf, "video_aspect_ratio", g_settings.video.aspect_ratio);
    config_set_float(conf, "video_xscale", g_settings.video.xscale);
+   config_set_int(conf, "autosave_interval", g_settings.autosave_interval);
    config_set_float(conf, "video_yscale", g_settings.video.yscale);
    config_set_bool(conf, "video_crop_overscan", g_settings.video.crop_overscan);
    config_set_bool(conf, "video_scale_integer", g_settings.video.scale_integer);
    config_set_bool(conf, "video_smooth", g_settings.video.smooth);
+   config_set_bool(conf, "video_threaded", g_settings.video.threaded);
+   config_set_bool(conf, "video_fullscreen", g_settings.video.fullscreen);
    config_set_float(conf, "video_refresh_rate", g_settings.video.refresh_rate);
+   config_set_string(conf, "video_driver", g_settings.video.driver);
    config_set_bool(conf, "video_vsync", g_settings.video.vsync);
    config_set_bool(conf, "video_hard_sync", g_settings.video.hard_sync);
    config_set_int(conf, "video_hard_sync_frames", g_settings.video.hard_sync_frames);
@@ -1008,46 +1249,37 @@ bool config_save_file(const char *path)
    config_set_int(conf, "video_swap_interval", g_settings.video.swap_interval);
    config_set_bool(conf, "video_gpu_screenshot", g_settings.video.gpu_screenshot);
    config_set_int(conf, "video_rotation", g_settings.video.rotation);
-   config_set_string(conf, "screenshot_directory", *g_settings.screenshot_directory ? g_settings.screenshot_directory : "default");
+   config_set_path(conf, "screenshot_directory", *g_settings.screenshot_directory ? g_settings.screenshot_directory : "default");
    config_set_int(conf, "aspect_ratio_index", g_settings.video.aspect_ratio_idx);
    config_set_string(conf, "audio_device", g_settings.audio.device);
+#ifdef HAVE_CAMERA
+   config_set_string(conf, "camera_device", g_settings.camera.device);
+#endif
    config_set_bool(conf, "audio_rate_control", g_settings.audio.rate_control);
    config_set_float(conf, "audio_rate_control_delta", g_settings.audio.rate_control_delta);
+   config_set_string(conf, "audio_driver", g_settings.audio.driver);
+   config_set_int(conf, "audio_out_rate", g_settings.audio.out_rate);
 
-   if (*g_settings.system_directory)
-      config_set_string(conf, "system_directory", g_settings.system_directory);
-   else
-      config_set_string(conf, "system_directory", "default");
+   config_set_path(conf, "system_directory", *g_settings.system_directory ? g_settings.system_directory : "default");
+   config_set_path(conf, "savefile_directory", *g_extern.savefile_dir ? g_extern.savefile_dir : "default");
+   config_set_path(conf, "savestate_directory", *g_extern.savestate_dir ? g_extern.savestate_dir : "default");
+   config_set_path(conf, "video_shader_dir", *g_settings.video.shader_dir ? g_settings.video.shader_dir : "default");
 
-   if (*g_extern.savefile_dir)
-      config_set_string(conf, "savefile_directory", g_extern.savefile_dir);
-   else
-      config_set_string(conf, "savefile_directory", "default");
-
-   if (*g_extern.savestate_dir)
-      config_set_string(conf, "savestate_directory", g_extern.savestate_dir);
-   else
-      config_set_string(conf, "savestate_directory", "default");
-
-   if (*g_settings.video.shader_dir)
-      config_set_string(conf, "video_shader_dir", g_settings.video.shader_dir);
-   else
-      config_set_string(conf, "video_shader_dir", "default");
-
-#if defined(HAVE_RGUI) || defined(HAVE_RMENU)
-   if (*g_settings.rgui_browser_directory)
-      config_set_string(conf, "rgui_browser_directory", g_settings.rgui_browser_directory);
-   else
-      config_set_string(conf, "rgui_browser_directory", "default");
+   config_set_path(conf, "content_directory", *g_settings.content_directory ? g_settings.content_directory : "default");
+#ifdef HAVE_MENU
+   config_set_path(conf, "rgui_browser_directory", *g_settings.rgui_content_directory ? g_settings.rgui_content_directory : "default");
+   config_set_path(conf, "rgui_config_directory", *g_settings.rgui_config_directory ? g_settings.rgui_config_directory : "default");
+   config_set_bool(conf, "rgui_show_start_screen", g_settings.rgui_show_start_screen);
 #endif
 
+   config_set_path(conf, "game_history_path", g_settings.game_history_path);
+   config_set_int(conf, "game_history_size", g_settings.game_history_size);
+   config_set_path(conf, "joypad_autoconfig_dir", g_settings.input.autoconfig_dir);
+   config_set_bool(conf, "input_autodetect_enable", g_settings.input.autodetect_enable);
+
 #ifdef HAVE_OVERLAY
-   if (*g_extern.overlay_dir)
-      config_set_string(conf, "overlay_directory", g_extern.overlay_dir);
-   else
-      config_set_string(conf, "overlay_directory", "default");
-   
-   config_set_string(conf, "input_overlay", g_settings.input.overlay);
+   config_set_path(conf, "overlay_directory", *g_extern.overlay_dir ? g_extern.overlay_dir : "default");
+   config_set_path(conf, "input_overlay", g_settings.input.overlay);
    config_set_float(conf, "input_overlay_opacity", g_settings.input.overlay_opacity);
    config_set_float(conf, "input_overlay_scale", g_settings.input.overlay_scale);
 #endif
@@ -1064,25 +1296,13 @@ bool config_save_file(const char *path)
 #ifdef _XBOX1
    config_set_int(conf, "sound_volume_level", g_extern.console.sound.volume_level);
 #endif
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE))
-      config_set_bool(conf, "triple_buffering_enable", true);
-   else
-      config_set_bool(conf, "triple_buffering_enable", false);
+   bool triple_buffering_enable_val = g_extern.lifecycle_state & (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
+   bool soft_filter_enable_val = g_extern.lifecycle_state & (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE);
+   bool flicker_filter_enable_val = g_extern.lifecycle_state & (1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE);
 
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_INFO_DRAW))
-      config_set_bool(conf, "info_msg_enable", true);
-   else
-      config_set_bool(conf, "info_msg_enable", false);
-
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE))
-      config_set_bool(conf, "soft_filter_enable", true);
-   else
-      config_set_bool(conf, "soft_filter_enable", false);
-
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_FLICKER_FILTER_ENABLE))
-      config_set_bool(conf, "flicker_filter_enable", true);
-   else
-      config_set_bool(conf, "flicker_filter_enable", false);
+   config_set_bool(conf, "triple_buffering_enable", triple_buffering_enable_val);
+   config_set_bool(conf, "soft_filter_enable", soft_filter_enable_val);
+   config_set_bool(conf, "flicker_filter_enable", flicker_filter_enable_val);
 
    config_set_int(conf, "flicker_filter_index", g_extern.console.screen.flicker_filter_index);
    config_set_int(conf, "soft_filter_index", g_extern.console.screen.soft_filter_index);
@@ -1092,7 +1312,7 @@ bool config_save_file(const char *path)
    config_set_int(conf, "custom_viewport_x", g_extern.console.screen.viewports.custom_vp.x);
    config_set_int(conf, "custom_viewport_y", g_extern.console.screen.viewports.custom_vp.y);
 #ifdef HAVE_RMENU
-   config_set_string(conf, "menu_texture_path", g_extern.menu_texture_path);
+   config_set_path(conf, "menu_texture_path", g_extern.menu_texture_path);
 #endif
    config_set_float(conf, "video_font_size", g_settings.video.font_size);
 
@@ -1100,267 +1320,32 @@ bool config_save_file(const char *path)
    config_set_bool(conf, "config_save_on_exit", g_extern.config_save_on_exit);
    config_set_int(conf, "sound_mode", g_extern.console.sound.mode);
    config_set_int(conf, "state_slot", g_extern.state_slot);
-   config_set_int(conf, "audio_mute", g_extern.audio_data.mute);
 
-   if (g_extern.lifecycle_mode_state & (1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE))
-      config_set_bool(conf, "custom_bgm_enable", true);
-   else
-      config_set_bool(conf, "custom_bgm_enable", false);
+   bool custom_bgm_enable_val = g_extern.lifecycle_state & (1ULL << MODE_AUDIO_CUSTOM_BGM_ENABLE);
+   config_set_bool(conf, "custom_bgm_enable", custom_bgm_enable_val);
 
-   for (unsigned i = 0; i < MAX_PLAYERS; i++)
+   config_set_string(conf, "input_driver", g_settings.input.driver);
+   config_set_string(conf, "input_joypad_driver", g_settings.input.joypad_driver);
+   config_set_string(conf, "input_keyboard_layout", g_settings.input.keyboard_layout);
+   for (i = 0; i < MAX_PLAYERS; i++)
    {
       char cfg[64];
-      snprintf(cfg, sizeof(cfg), "input_dpad_emulation_p%u", i + 1);
-      config_set_int(conf, cfg, g_settings.input.dpad_emulation[i]);
       snprintf(cfg, sizeof(cfg), "input_device_p%u", i + 1);
       config_set_int(conf, cfg, g_settings.input.device[i]);
       snprintf(cfg, sizeof(cfg), "input_player%u_joypad_index", i + 1);
       config_set_int(conf, cfg, g_settings.input.joypad_map[i]);
       snprintf(cfg, sizeof(cfg), "input_libretro_device_p%u", i + 1);
       config_set_int(conf, cfg, g_settings.input.libretro_device[i]);
+      snprintf(cfg, sizeof(cfg), "input_player%u_analog_dpad_mode", i + 1);
+      config_set_int(conf, cfg, g_settings.input.analog_dpad_mode[i]);
    }
 
-   config_file_write(conf, path);  
-   config_file_free(conf);
-
-   return true;
-}
-
-bool config_save_keybinds(const char *path)
-{
-   config_file_t *conf = config_file_new(path);
-   if (!conf)
-      conf = config_file_new(NULL);
-   if (!conf)
-      return NULL;
-
-   for (unsigned i = 0; i < MAX_PLAYERS; i++)
+   for (i = 0; i < MAX_PLAYERS; i++)
       save_keybinds_player(conf, i);
 
-   config_file_write(conf, path);
+   config_set_bool(conf, "core_specific_config", g_settings.core_specific_config);
+
+   bool ret = config_file_write(conf, path);
    config_file_free(conf);
-   return true;
-}
-
-void settings_set(uint64_t settings)
-{
-#ifdef HAVE_OVERLAY
-   if (settings & (1ULL << S_INPUT_OVERLAY_OPACITY_DECREMENT))
-   {
-      g_settings.input.overlay_opacity -= 0.01f;
-
-      if (g_settings.input.overlay_opacity < 0.0f)
-         g_settings.input.overlay_opacity = 0.0f;
-   }
-
-   if (settings & (1ULL << S_INPUT_OVERLAY_OPACITY_INCREMENT))
-   {
-      g_settings.input.overlay_opacity += 0.01f;
-
-      if (g_settings.input.overlay_opacity > 1.0f)
-         g_settings.input.overlay_opacity = 1.0f;
-   }
-
-   if (settings & (1ULL << S_DEF_INPUT_OVERLAY_OPACITY))
-      g_settings.input.overlay_opacity = 1.0f;
-
-   if (settings & (1ULL << S_INPUT_OVERLAY_SCALE_DECREMENT))
-   {
-      g_settings.input.overlay_scale -= 0.01f;
-
-      if (g_settings.input.overlay_scale < 0.01f) // Avoid potential divide by zero.
-         g_settings.input.overlay_scale = 0.01f;
-   }
-
-   if (settings & (1ULL << S_INPUT_OVERLAY_SCALE_INCREMENT))
-   {
-      g_settings.input.overlay_scale += 0.01f;
-
-      if (g_settings.input.overlay_scale > 2.0f)
-         g_settings.input.overlay_scale = 2.0f;
-   }
-
-   if (settings & (1ULL << S_DEF_INPUT_OVERLAY_SCALE))
-      g_settings.input.overlay_opacity = 1.0f;
-#endif
-
-   if (settings & (1ULL << S_REWIND_GRANULARITY_INCREMENT))
-      g_settings.rewind_granularity++;
-
-   if (settings & (1ULL << S_REWIND_GRANULARITY_DECREMENT))
-   {
-      if (g_settings.rewind_granularity > 1)
-         g_settings.rewind_granularity--;
-   }
-
-   if (settings & (1ULL << S_DEF_REWIND_GRANULARITY))
-      g_settings.rewind_granularity = 1;
-
-   if (settings & (1ULL << S_VIDEO_VSYNC_TOGGLE))
-      g_settings.video.vsync = !g_settings.video.vsync;
-
-   if (settings & (1ULL << S_VIDEO_FULLSCREEN_TOGGLE))
-      g_settings.video.fullscreen = !g_settings.video.fullscreen;
-
-   if (settings & (1ULL << S_DEF_VIDEO_VSYNC))
-      g_settings.video.vsync = true;
-
-   if (settings & (1ULL << S_ASPECT_RATIO_DECREMENT))
-   {
-      if (g_settings.video.aspect_ratio_idx > 0)
-         g_settings.video.aspect_ratio_idx--;
-   }
-
-   if (settings & (1ULL << S_ASPECT_RATIO_INCREMENT))
-   {
-      if (g_settings.video.aspect_ratio_idx < LAST_ASPECT_RATIO)
-         g_settings.video.aspect_ratio_idx++;
-   }
-
-   if (settings & (1ULL << S_SCALE_INTEGER_TOGGLE))
-      g_settings.video.scale_integer = !g_settings.video.scale_integer;
-
-   if (settings & (1ULL << S_AUDIO_MUTE))
-      g_extern.audio_data.mute = !g_extern.audio_data.mute;
-
-   if (settings & (1ULL << S_AUDIO_CONTROL_RATE_DECREMENT))
-   {
-      if (g_settings.audio.rate_control_delta > 0.0)
-         g_settings.audio.rate_control_delta -= 0.001;
-
-      if (g_settings.audio.rate_control_delta < 0.0005)
-      {
-         g_settings.audio.rate_control = false;
-         g_settings.audio.rate_control_delta = 0.0;
-      }
-      else
-         g_settings.audio.rate_control = true;
-   }
-
-   if (settings & (1ULL << S_AUDIO_CONTROL_RATE_INCREMENT))
-   {
-      if (g_settings.audio.rate_control_delta < 0.2)
-         g_settings.audio.rate_control_delta += 0.001;
-      g_settings.audio.rate_control = true;
-   }
-
-   if (settings & (1ULL << S_FRAME_ADVANCE))
-   {
-      g_extern.lifecycle_state |= (1ULL << RARCH_FRAMEADVANCE);
-      g_extern.lifecycle_mode_state |= (1ULL << MODE_GAME);
-   }
-
-   if (settings & (1ULL << S_HW_TEXTURE_FILTER))
-      g_settings.video.smooth = !g_settings.video.smooth;
-
-   if (settings & (1ULL << S_RESOLUTION_PREVIOUS))
-   {
-      if (g_extern.console.screen.resolutions.current.idx)
-      {
-         g_extern.console.screen.resolutions.current.idx--;
-         g_extern.console.screen.resolutions.current.id = 
-            g_extern.console.screen.resolutions.list[g_extern.console.screen.resolutions.current.idx];
-      }
-   }
-
-   if (settings & (1ULL << S_RESOLUTION_NEXT))
-   {
-      if (g_extern.console.screen.resolutions.current.idx + 1 < 
-            g_extern.console.screen.resolutions.count)
-      {
-         g_extern.console.screen.resolutions.current.idx++;
-         g_extern.console.screen.resolutions.current.id = 
-            g_extern.console.screen.resolutions.list[g_extern.console.screen.resolutions.current.idx];
-      }
-   }
-
-   if (settings & (1ULL << S_ROTATION_DECREMENT))
-   {
-      if (g_settings.video.rotation > 0)
-         g_settings.video.rotation--;
-   }
-
-   if (settings & (1ULL << S_ROTATION_INCREMENT))
-   {
-      if (g_settings.video.rotation < LAST_ORIENTATION)
-         g_settings.video.rotation++;
-   }
-
-   if (settings & (1ULL << S_REWIND))
-      g_settings.rewind_enable = !g_settings.rewind_enable;
-
-   if (settings & (1ULL << S_SAVESTATE_DECREMENT))
-   {
-      if (g_extern.state_slot != 0)
-         g_extern.state_slot--;
-   }
-
-   if (settings & (1ULL << S_SAVESTATE_INCREMENT))
-      g_extern.state_slot++;
-
-   if (settings & (1ULL << S_TRIPLE_BUFFERING))
-   {
-      if (g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE))
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
-      else
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
-   }
-
-   if (settings & (1ULL << S_REFRESH_RATE_DECREMENT))
-      g_settings.video.refresh_rate -= 0.01f;
-
-   if (settings & (1ULL << S_REFRESH_RATE_INCREMENT))
-      g_settings.video.refresh_rate += 0.01f;
-
-   if (settings & (1ULL << S_INFO_DEBUG_MSG_TOGGLE))
-   {
-      if (g_extern.lifecycle_mode_state & (1ULL << MODE_FPS_DRAW))
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_FPS_DRAW);
-      else
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_FPS_DRAW);
-   }
-
-   if (settings & (1ULL << S_INFO_MSG_TOGGLE))
-   {
-      if (g_extern.lifecycle_mode_state & (1ULL << MODE_INFO_DRAW))
-         g_extern.lifecycle_mode_state &= ~(1ULL << MODE_INFO_DRAW);
-      else
-         g_extern.lifecycle_mode_state |= (1ULL << MODE_INFO_DRAW);
-   }
-
-   if (settings & (1ULL << S_DEF_ASPECT_RATIO))
-      g_settings.video.aspect_ratio_idx = aspect_ratio_idx;
-
-   if (settings & (1ULL << S_DEF_SCALE_INTEGER))
-      g_settings.video.scale_integer = scale_integer;
-
-   if (settings & (1ULL << S_DEF_AUDIO_MUTE))
-      g_extern.audio_data.mute = false;
-
-   if (settings & (1ULL << S_DEF_AUDIO_CONTROL_RATE))
-   {
-      g_settings.audio.rate_control_delta = rate_control_delta;
-      g_settings.audio.rate_control = rate_control;
-   }
-
-   if (settings & (1ULL << S_DEF_HW_TEXTURE_FILTER))
-      g_settings.video.smooth = video_smooth;
-
-   if (settings & (1ULL << S_DEF_ROTATION))
-      g_settings.video.rotation = ORIENTATION_NORMAL;
-
-   if (settings & (1ULL << S_DEF_TRIPLE_BUFFERING))
-      g_extern.lifecycle_mode_state |= (1ULL << MODE_VIDEO_TRIPLE_BUFFERING_ENABLE);
-
-   if (settings & (1ULL << S_DEF_SAVE_STATE))
-      g_extern.state_slot = 0;
-
-   if (settings & (1ULL << S_DEF_REFRESH_RATE))
-      g_settings.video.refresh_rate = refresh_rate;
-
-   if (settings & (1ULL << S_DEF_INFO_DEBUG_MSG))
-      g_extern.lifecycle_mode_state &= ~(1ULL << MODE_FPS_DRAW);
-
-   if (settings & (1ULL << S_DEF_INFO_MSG))
-      g_extern.lifecycle_mode_state |= (1ULL << MODE_INFO_DRAW);
+   return ret;
 }

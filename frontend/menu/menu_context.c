@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -20,6 +20,8 @@
 #include "../../config.h"
 #endif
 
+#include "menu_common.h"
+
 static const menu_ctx_driver_t *menu_ctx_drivers[] = {
 #if defined(HAVE_RMENU)
    &menu_ctx_rmenu,
@@ -35,7 +37,8 @@ static const menu_ctx_driver_t *menu_ctx_drivers[] = {
 
 const menu_ctx_driver_t *menu_ctx_find_driver(const char *ident)
 {
-   for (unsigned i = 0; menu_ctx_drivers[i]; i++)
+   unsigned i;
+   for (i = 0; menu_ctx_drivers[i]; i++)
    {
       if (strcmp(menu_ctx_drivers[i]->ident, ident) == 0)
          return menu_ctx_drivers[i];
@@ -44,18 +47,21 @@ const menu_ctx_driver_t *menu_ctx_find_driver(const char *ident)
    return NULL;
 }
 
-bool menu_ctx_init_first(const menu_ctx_driver_t **driver, rgui_handle_t **handle)
+bool menu_ctx_init_first(const menu_ctx_driver_t **driver, void **data)
 {
+   unsigned i;
+   rgui_handle_t **handle = (rgui_handle_t**)data;
+
    if (!menu_ctx_drivers[0])
       return false;
 
-   for (unsigned i = 0; menu_ctx_drivers[i]; i++)
+   for (i = 0; menu_ctx_drivers[i]; i++)
    {
       void *h = menu_ctx_drivers[i]->init();
       if (h)
       {
          *driver = menu_ctx_drivers[i];
-         *handle = h;
+         *handle = (rgui_handle_t*)h;
          return true;
       }
    }

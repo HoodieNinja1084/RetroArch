@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2013 - Jason Fetters
+ *  Copyright (C) 2013-2014 - Jason Fetters
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -15,8 +15,8 @@
 
 
 #include <unistd.h>
-#include <dispatch/dispatch.h>
 
+#include "apple_gamecontroller.h"
 #include "input/input_common.h"
 #include "apple_input.h"
 #include "general.h"
@@ -47,9 +47,68 @@ const unsigned char MAC_NATIVE_TO_HID[128] = {
 #define HIDKEY(X) X
 #endif
 
-// Main thread interface
 static bool icade_enabled;
+static bool small_keyboard_enabled;
+static bool small_keyboard_active;
 static uint32_t icade_buttons;
+
+static bool handle_small_keyboard(unsigned* code, bool down)
+{
+   static const struct { uint8_t orig; uint8_t mod; } mapping_def[] =
+   {
+      { KEY_Grave,      KEY_Escape     }, { KEY_1,          KEY_F1         },
+      { KEY_2,          KEY_F2         }, { KEY_3,          KEY_F3         },
+      { KEY_4,          KEY_F4         }, { KEY_5,          KEY_F5         },
+      { KEY_6,          KEY_F6         }, { KEY_7,          KEY_F7         },
+      { KEY_8,          KEY_F8         }, { KEY_9,          KEY_F9         },
+      { KEY_0,          KEY_F10        }, { KEY_Minus,      KEY_F11        },
+      { KEY_Equals,     KEY_F12        }, { KEY_Up,         KEY_PageUp     },
+      { KEY_Down,       KEY_PageDown   }, { KEY_Left,       KEY_Home       },
+      { KEY_Right,      KEY_End        }, { KEY_Q,          KP_7           },
+      { KEY_W,          KP_8           }, { KEY_E,          KP_9           },
+      { KEY_A,          KP_4           }, { KEY_S,          KP_5           },
+      { KEY_D,          KP_6           }, { KEY_Z,          KP_1           },
+      { KEY_X,          KP_2           }, { KEY_C,          KP_3           },
+      { 0 }
+   };
+   
+   static uint8_t mapping[128];
+   static bool map_initialized;
+   
+   if (!map_initialized)
+   {
+      for (int i = 0; mapping_def[i].orig; i ++)
+         mapping[mapping_def[i].orig] = mapping_def[i].mod;
+      map_initialized = true;
+   }
+
+   if (*code == KEY_RightShift)
+   {
+      small_keyboard_active = down;
+      *code = 0;
+      return true;
+   }
+   
+   unsigned translated_code = (*code < 128) ? mapping[*code] : 0;
+   
+   // Allow old keys to be released
+   if (!down && g_current_input_data.keys[*code])
+      return false;
+
+   if ((!down && g_current_input_data.keys[translated_code]) ||
+       small_keyboard_active)
+   {
+      *code = translated_code;
+      return true;
+   }
+
+   return false;
+}
+
+void apple_input_enable_small_keyboard(bool on)
+{
+   small_keyboard_enabled = on;
+}
 
 static void handle_icade_event(unsigned keycode)
 {
@@ -86,29 +145,65 @@ void apple_input_enable_icade(bool on)
    icade_buttons = 0;
 }
 
-uint32_t apple_input_get_icade_buttons()
+uint32_t apple_input_get_icade_buttons(void)
 {
    return icade_enabled ? icade_buttons : 0;
 }
 
-void apple_input_reset_icade_buttons()
+void apple_input_reset_icade_buttons(void)
 {
    icade_buttons = 0;
 }
 
-void apple_input_handle_key_event(unsigned keycode, bool down)
+void apple_input_keyboard_event(bool down, unsigned code, uint32_t character, uint32_t mod)
 {
-   keycode = HIDKEY(keycode);
+   code = HIDKEY(code);
 
    if (icade_enabled)
-      handle_icade_event(keycode);
-   else if (keycode < MAX_KEYS)
-      g_current_input_data.keys[keycode] = down;
+   {
+      handle_icade_event(code);
+      return;
+   }
+
+   if (small_keyboard_enabled && handle_small_keyboard(&code, down))
+      character = 0;
+   
+   if (code == 0 || code >= MAX_KEYS)
+      return;
+
+   g_current_input_data.keys[code] = down;
+   
+   /* This is copied here as it isn't defined in any standard iOS header */
+   enum
+   {
+      NSAlphaShiftKeyMask = 1 << 16,
+      NSShiftKeyMask      = 1 << 17,
+      NSControlKeyMask    = 1 << 18,
+      NSAlternateKeyMask  = 1 << 19,
+      NSCommandKeyMask    = 1 << 20,
+      NSNumericPadKeyMask = 1 << 21,
+      NSHelpKeyMask       = 1 << 22,
+      NSFunctionKeyMask   = 1 << 23,
+      NSDeviceIndependentModifierFlagsMask = 0xffff0000U
+   };
+
+   enum retro_mod mods = RETROKMOD_NONE;
+   mods |= (mod & NSAlphaShiftKeyMask) ? RETROKMOD_CAPSLOCK : 0;
+   mods |= (mod & NSShiftKeyMask)      ? RETROKMOD_SHIFT : 0;
+   mods |= (mod & NSControlKeyMask)    ? RETROKMOD_CTRL : 0;
+   mods |= (mod & NSAlternateKeyMask)  ? RETROKMOD_ALT : 0;
+   mods |= (mod & NSCommandKeyMask)    ? RETROKMOD_META : 0;
+   mods |= (mod & NSNumericPadKeyMask) ? RETROKMOD_NUMLOCK : 0;
+
+   input_keyboard_event(down, input_translate_keysym_to_rk(code), character, mods);
 }
 
 
-int32_t apple_input_find_any_key()
+int32_t apple_input_find_any_key(void)
 {
+   apple_gamecontroller_poll_all();
+   input_init_keyboard_lut(apple_key_map_hidusage);
+
    for (int i = 0; apple_key_name_map[i].hid_id; i++)
       if (g_current_input_data.keys[apple_key_name_map[i].hid_id])
          return apple_key_name_map[i].hid_id;
@@ -118,6 +213,8 @@ int32_t apple_input_find_any_key()
 
 int32_t apple_input_find_any_button(uint32_t port)
 {
+   apple_gamecontroller_poll_all();
+
    uint32_t buttons = g_current_input_data.pad_buttons[port] |
                       ((port == 0) ? apple_input_get_icade_buttons() : 0);
 
@@ -131,6 +228,8 @@ int32_t apple_input_find_any_button(uint32_t port)
 
 int32_t apple_input_find_any_axis(uint32_t port)
 {
+   apple_gamecontroller_poll_all();
+
    for (int i = 0; i < 4; i++)
    {
       int16_t value = g_current_input_data.pad_axis[port][i];
@@ -166,22 +265,21 @@ static void *apple_input_init(void)
 
 static void apple_input_poll(void *data)
 {
-   dispatch_sync(dispatch_get_main_queue(), ^{
-      memcpy(&g_polled_input_data, &g_current_input_data, sizeof(apple_input_data_t));
+   apple_gamecontroller_poll_all();
+   memcpy(&g_polled_input_data, &g_current_input_data, sizeof(apple_input_data_t));
 
-      for (int i = 0; i != g_polled_input_data.touch_count; i ++)
-      {
-         input_translate_coord_viewport(g_polled_input_data.touches[i].screen_x, g_polled_input_data.touches[i].screen_y,
-            &g_polled_input_data.touches[i].fixed_x, &g_polled_input_data.touches[i].fixed_y,
-            &g_polled_input_data.touches[i].full_x, &g_polled_input_data.touches[i].full_y);
-      }
+   for (int i = 0; i != g_polled_input_data.touch_count; i ++)
+   {
+      input_translate_coord_viewport(g_polled_input_data.touches[i].screen_x, g_polled_input_data.touches[i].screen_y,
+         &g_polled_input_data.touches[i].fixed_x, &g_polled_input_data.touches[i].fixed_y,
+         &g_polled_input_data.touches[i].full_x, &g_polled_input_data.touches[i].full_y);
+   }
 
-      input_joypad_poll(g_joydriver);
-      g_polled_input_data.pad_buttons[0] |= apple_input_get_icade_buttons();
+   input_joypad_poll(g_joydriver);
+   g_polled_input_data.pad_buttons[0] |= apple_input_get_icade_buttons();
 
-      g_current_input_data.mouse_delta[0] = 0;
-      g_current_input_data.mouse_delta[1] = 0;
-   });
+   g_current_input_data.mouse_delta[0] = 0;
+   g_current_input_data.mouse_delta[1] = 0;
 }
 
 static int16_t apple_input_state(void *data, const struct retro_keybind **binds, unsigned port, unsigned device, unsigned index, unsigned id)
@@ -189,7 +287,7 @@ static int16_t apple_input_state(void *data, const struct retro_keybind **binds,
    switch (device)
    {
       case RETRO_DEVICE_JOYPAD:
-         return (id < RARCH_BIND_LIST_END) ? apple_is_pressed(port, binds[port], id) : false;
+         return (id < RARCH_BIND_LIST_END) ? apple_is_pressed(port, binds[port], id) : 0;
          
       case RETRO_DEVICE_ANALOG:
          return input_joypad_analog(g_joydriver, port, index, id, binds[port]);
@@ -216,12 +314,14 @@ static int16_t apple_input_state(void *data, const struct retro_keybind **binds,
          if (index < g_polled_input_data.touch_count && index < MAX_TOUCHES)
          {
             const apple_touch_data_t* touch = &g_polled_input_data.touches[index];
+            int16_t x = want_full ? touch->full_x : touch->fixed_x;
+            int16_t y = want_full ? touch->full_y : touch->fixed_y;
 
             switch (id)
             {
-               case RETRO_DEVICE_ID_POINTER_PRESSED: return 1;
-               case RETRO_DEVICE_ID_POINTER_X: return want_full ? touch->full_x : touch->fixed_x;
-               case RETRO_DEVICE_ID_POINTER_Y: return want_full ? touch->full_y : touch->fixed_y;
+               case RETRO_DEVICE_ID_POINTER_PRESSED: return (x != -0x8000) && (y != -0x8000);
+               case RETRO_DEVICE_ID_POINTER_X: return x;
+               case RETRO_DEVICE_ID_POINTER_Y: return y;
             }
          }
          
@@ -242,6 +342,7 @@ static bool apple_bind_button_pressed(void *data, int key)
 static void apple_input_free_input(void *data)
 {
    (void)data;
+   g_joydriver->destroy();
 }
 
 static void apple_input_set_keybinds(void *data, unsigned device, unsigned port,
@@ -275,7 +376,6 @@ static void apple_input_set_keybinds(void *data, unsigned device, unsigned port,
             g_settings.input.binds[port][RETRO_DEVICE_ID_JOYPAD_L2].joykey     = 23;
             g_settings.input.binds[port][RETRO_DEVICE_ID_JOYPAD_R2].joykey     = 18;
 				g_settings.input.binds[port][RARCH_MENU_TOGGLE].joykey				 = 27;
-            g_settings.input.dpad_emulation[port] = ANALOG_DPAD_NONE;
             break;
          case DEVICE_SIXAXIS:
             strlcpy(g_settings.input.device_names[port], "SixAxis/DualShock3",
@@ -298,11 +398,43 @@ static void apple_input_set_keybinds(void *data, unsigned device, unsigned port,
             g_settings.input.binds[port][RETRO_DEVICE_ID_JOYPAD_L3].joykey     = 14;
             g_settings.input.binds[port][RETRO_DEVICE_ID_JOYPAD_R3].joykey     = 15;
             g_settings.input.binds[port][RARCH_MENU_TOGGLE].joykey             = 16;
-            g_settings.input.dpad_emulation[port] = ANALOG_DPAD_NONE;
             break;
       }
    }
 #endif
+
+   if (keybind_action & (1ULL << KEYBINDS_ACTION_GET_BIND_LABEL))
+   {
+      struct platform_bind *ret = (struct platform_bind*)data;
+
+      if (ret->joykey == NO_BTN)
+         strlcpy(ret->desc, "No button", sizeof(ret->desc));
+      else
+         snprintf(ret->desc, sizeof(ret->desc), "Button %llu", ret->joykey);
+   }
+}
+
+static bool apple_input_set_rumble(void *data, unsigned port, enum retro_rumble_effect effect, uint16_t strength)
+{
+   return input_joypad_set_rumble(g_joydriver, port, effect, strength);
+}
+
+static uint64_t apple_input_get_capabilities(void *data)
+{
+   uint64_t caps = 0;
+
+   caps |= (1 << RETRO_DEVICE_JOYPAD);
+   caps |= (1 << RETRO_DEVICE_MOUSE);
+   caps |= (1 << RETRO_DEVICE_KEYBOARD);
+   caps |= (1 << RETRO_DEVICE_POINTER);
+   caps |= (1 << RETRO_DEVICE_ANALOG);
+
+   return caps;
+}
+
+const rarch_joypad_driver_t *apple_get_joypad_driver(void *data)
+{
+    return g_joydriver;
 }
 
 const input_driver_t input_apple = {
@@ -312,5 +444,11 @@ const input_driver_t input_apple = {
    apple_bind_button_pressed,
    apple_input_free_input,
    apple_input_set_keybinds,
+   NULL,
+   NULL,
+   apple_input_get_capabilities,
    "apple_input",
+   NULL,
+   apple_input_set_rumble,
+   apple_get_joypad_driver
 };

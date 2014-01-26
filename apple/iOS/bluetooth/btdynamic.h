@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2013 - Jason Fetters
+ *  Copyright (C) 2013-2014 - Jason Fetters
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -31,6 +31,7 @@ bool btstack_is_running();
 #endif
 
 BTDIMPORT int (*bt_open_ptr)(void);
+BTDIMPORT void (*bt_close_ptr)(void);
 BTDIMPORT void (*bt_flip_addr_ptr)(bd_addr_t dest, bd_addr_t src);
 BTDIMPORT char* (*bd_addr_to_str_ptr)(bd_addr_t addr);
 BTDIMPORT btstack_packet_handler_t (*bt_register_packet_handler_ptr)(btstack_packet_handler_t handler);

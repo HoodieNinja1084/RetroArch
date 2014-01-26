@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -136,6 +136,14 @@ typedef struct gl_shader_backend gl_shader_backend_t;
 #define MAX_SHADERS 16
 #define MAX_TEXTURES 8
 
+struct gl_overlay_data
+{
+   GLuint tex;
+   GLfloat tex_coord[8];
+   GLfloat vertex_coord[8];
+   GLfloat alpha_mod;
+};
+
 typedef struct gl
 {
    const gfx_ctx_driver_t *ctx_driver;
@@ -168,6 +176,7 @@ typedef struct gl
    GLuint hw_render_depth[MAX_TEXTURES];
    bool hw_render_fbo_init;
    bool hw_render_depth_init;
+   bool has_fp_fbo;
 #endif
    bool hw_render_use;
 
@@ -201,6 +210,11 @@ typedef struct gl
    GLenum texture_fmt;
    GLenum wrap_mode;
    unsigned base_size; // 2 or 4
+#ifdef HAVE_OPENGLES
+   bool support_unpack_row_length;
+#else
+   bool have_es2_compat;
+#endif
 
    // Fonts
    void *font;
@@ -219,13 +233,10 @@ typedef struct gl
    video_info_t video_info;
 
 #ifdef HAVE_OVERLAY
-   // Overlay rendering
+   struct gl_overlay_data *overlay;
+   unsigned overlays;
    bool overlay_enable;
    bool overlay_full_screen;
-   GLuint tex_overlay;
-   GLfloat overlay_tex_coord[8];
-   GLfloat overlay_vertex_coord[8];
-   GLfloat overlay_alpha_mod;
 #endif
 
 #if !defined(HAVE_OPENGLES) && defined(HAVE_FFMPEG)
@@ -237,7 +248,7 @@ typedef struct gl
    struct scaler_ctx pbo_readback_scaler;
 #endif
 
-#if defined(HAVE_RGUI) || defined(HAVE_RMENU)
+#if defined(HAVE_MENU)
    GLuint rgui_texture;
    bool rgui_texture_enable;
    bool rgui_texture_full_screen;
@@ -257,7 +268,7 @@ typedef struct gl
 
 #if defined(HAVE_PSGL)
 #define RARCH_GL_INTERNAL_FORMAT32 GL_ARGB_SCE
-#define RARCH_GL_INTERNAL_FORMAT16 GL_RGB5
+#define RARCH_GL_INTERNAL_FORMAT16 GL_RGB5 // TODO: Verify if this is really 565 or just 555.
 #define RARCH_GL_TEXTURE_TYPE32 GL_BGRA
 #define RARCH_GL_TEXTURE_TYPE16 GL_BGRA
 #define RARCH_GL_FORMAT32 GL_UNSIGNED_INT_8_8_8_8_REV
@@ -279,17 +290,36 @@ typedef struct gl
 #define RARCH_GL_FORMAT16 GL_UNSIGNED_SHORT_5_6_5
 #else
 // On desktop, we always use 32-bit.
-#define RARCH_GL_INTERNAL_FORMAT32 GL_RGBA
-#define RARCH_GL_INTERNAL_FORMAT16 GL_RGBA
+#define RARCH_GL_INTERNAL_FORMAT32 GL_RGBA8
+#define RARCH_GL_INTERNAL_FORMAT16 GL_RGBA8
 #define RARCH_GL_TEXTURE_TYPE32 GL_BGRA
 #define RARCH_GL_TEXTURE_TYPE16 GL_BGRA
 #define RARCH_GL_FORMAT32 GL_UNSIGNED_INT_8_8_8_8_REV
 #define RARCH_GL_FORMAT16 GL_UNSIGNED_INT_8_8_8_8_REV
+
+// GL_RGB565 internal format isn't in desktop GL until 4.1 core (ARB_ES2_compatibility).
+// Check for this.
+#ifndef GL_RGB565
+#define GL_RGB565 0x8D62
+#endif
+#define RARCH_GL_INTERNAL_FORMAT16_565 GL_RGB565
+#define RARCH_GL_TEXTURE_TYPE16_565 GL_RGB
+#define RARCH_GL_FORMAT16_565 GL_UNSIGNED_SHORT_5_6_5
 #endif
 
 // Platform specific workarounds/hacks.
 #if defined(__CELLOS_LV2__)
-#define NO_GL_READ_VIEWPORT
+#define NO_GL_READ_PIXELS
+
+// Performance hacks
+#ifdef HAVE_RGL
+extern GLvoid* glMapBufferTextureReferenceRA( GLenum target, GLenum access );
+extern GLboolean glUnmapBufferTextureReferenceRA( GLenum target );
+extern void glBufferSubDataTextureReferenceRA( GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid *data );
+#define glMapBuffer(target, access) glMapBufferTextureReferenceRA(target, access)
+#define glUnmapBuffer(target) glUnmapBufferTextureReferenceRA(target)
+#define glBufferSubData(target, offset, size, data) glBufferSubDataTextureReferenceRA(target, offset, size, data)
+#endif
 #endif
 
 #if defined(HAVE_OPENGL_MODERN) || defined(HAVE_OPENGLES2) || defined(HAVE_PSGL)
@@ -304,8 +334,12 @@ typedef struct gl
 #define NO_GL_CLAMP_TO_BORDER
 #endif
 
-#if defined(HAVE_OPENGLES2) // It's an extension. Don't bother checking for it atm.
-#undef GL_UNPACK_ROW_LENGTH
+#if defined(HAVE_OPENGLES)
+
+#ifndef GL_UNPACK_ROW_LENGTH
+#define GL_UNPACK_ROW_LENGTH  0x0CF2
+#endif
+
 #endif
 
 void gl_set_projection(void *data, struct gl_ortho *ortho, bool allow_rotate);

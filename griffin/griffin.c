@@ -1,6 +1,6 @@
 /* RetroArch - A frontend for libretro.
-* Copyright (C) 2010-2013 - Hans-Kristian Arntzen
-* Copyright (C) 2011-2013 - Daniel De Matteis
+* Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+* Copyright (C) 2011-2014 - Daniel De Matteis
 *
 * RetroArch is free software: you can redistribute it and/or modify it under the terms
 * of the GNU General Public License as published by the Free Software Found-
@@ -18,13 +18,10 @@
 #include "../msvc/msvc_compat.h"
 #endif
 
-#if defined(HAVE_RMENU) || defined(HAVE_RGUI) || defined(HAVE_RMENU_XUI)
-#define HAVE_MENU
-#endif
-
 #ifdef __CELLOS_LV2__
 #include "../ps3/altivec_mem.c"
 #endif
+
 
 /*============================================================
 CONSOLE EXTENSIONS
@@ -47,6 +44,8 @@ CONSOLE EXTENSIONS
 #include "../file_extract.c"
 #endif
 
+
+
 /*============================================================
 RLAUNCH
 ============================================================ */
@@ -64,7 +63,7 @@ PERFORMANCE
 ============================================================ */
 
 #ifdef ANDROID
-#include "../android/native/jni/cpufeatures.c"
+#include "../performance/performance_android.c"
 #endif
 
 #include "../performance.c"
@@ -109,6 +108,8 @@ VIDEO CONTEXT
 #include "../gfx/context/bbqnx_ctx.c"
 #elif defined(IOS) || defined(OSX)
 #include "../gfx/context/apple_gl_ctx.c"
+#elif defined(EMSCRIPTEN)
+#include "../gfx/context/emscriptenegl_ctx.c"
 #endif
 
 
@@ -279,6 +280,7 @@ FONTS
 INPUT
 ============================================================ */
 #include "../input/input_common.c"
+#include "../input/keyboard_line.c"
 
 #ifdef HAVE_OVERLAY
 #include "../input/overlay.c"
@@ -302,6 +304,14 @@ INPUT
 #include "../apple/common/apple_joypad.c"
 #elif defined(__BLACKBERRY_QNX__)
 #include "../blackberry-qnx/qnx_input.c"
+#elif defined(EMSCRIPTEN)
+#include "../input/rwebinput_input.c"
+#endif
+
+#ifdef HAVE_OSK
+#if defined(__CELLOS_LV2__)
+#include "../ps3/ps3_input_osk.c"
+#endif
 #endif
 
 #if defined(__linux__) && !defined(ANDROID) 
@@ -344,14 +354,37 @@ AUDIO RESAMPLER
 #include "../audio/sinc.c"
 
 /*============================================================
+CAMERA
+============================================================ */
+#ifdef HAVE_CAMERA
+#if defined(ANDROID)
+#include "../camera/android.c"
+#elif defined(EMSCRIPTEN)
+#include "../camera/rwebcam.c"
+#endif
+
+#ifdef HAVE_V4L2
+#include "../camera/video4linux2.c"
+#endif
+
+#endif
+
+/*============================================================
+LOCATION
+============================================================ */
+#ifdef HAVE_LOCATION
+
+#if defined(ANDROID)
+#include "../location/android.c"
+#endif
+
+#endif
+
+/*============================================================
 RSOUND
 ============================================================ */
 #ifdef HAVE_RSOUND
-#ifdef __CELLOS_LV2__
-#include "../deps/librsound/librsound.c"
-#else
-#include "../deps/librsound/librsound_orig.c"
-#endif
+#include "../audio/librsound.c"
 #include "../audio/rsound.c"
 #endif
 
@@ -369,6 +402,8 @@ AUDIO
 #include "../xenon/xenon360_audio.c"
 #elif defined(GEKKO)
 #include "../gx/gx_audio.c"
+#elif defined(EMSCRIPTEN)
+#include "../audio/rwebaudio.c"
 #endif
 
 #ifdef HAVE_XAUDIO
@@ -437,7 +472,7 @@ FILE
 /*============================================================
 MESSAGE
 ============================================================ */
-#include "../message.c"
+#include "../message_queue.c"
 
 /*============================================================
 PATCH
@@ -464,6 +499,9 @@ FRONTEND
 #include "../frontend/platform/platform_ps3.c"
 #elif defined(GEKKO)
 #include "../frontend/platform/platform_gx.c"
+#ifdef HW_RVL
+#include "../frontend/platform/platform_wii.c"
+#endif
 #elif defined(_XBOX)
 #include "../frontend/platform/platform_xdk.c"
 #elif defined(PSP)
@@ -472,6 +510,8 @@ FRONTEND
 #include "../frontend/platform/platform_qnx.c"
 #elif defined(OSX) || defined(IOS)
 #include "../frontend/platform/platform_apple.c"
+#elif defined(ANDROID)
+#include "../frontend/platform/platform_android.c"
 #endif
 
 /*============================================================
@@ -479,8 +519,6 @@ MAIN
 ============================================================ */
 #if defined(XENON)
 #include "../frontend/frontend_xenon.c"
-#elif defined(ANDROID)
-#include "../frontend/frontend_android.c"
 #else
 #include "../frontend/frontend.c"
 #endif
@@ -497,11 +535,9 @@ THREAD
 #include "../thread/xenon_sdl_threads.c"
 #elif defined(HAVE_THREADS)
 #include "../thread.c"
-#include "../gfx/thread_wrapper.c"
+#include "../gfx/video_thread_wrapper.c"
 #include "../audio/thread_wrapper.c"
-#ifndef RARCH_CONSOLE
 #include "../autosave.c"
-#endif
 #endif
 
 
@@ -527,14 +563,17 @@ MENU
 #ifdef HAVE_MENU
 #include "../frontend/menu/menu_common.c"
 #include "../frontend/menu/menu_context.c"
+#include "../frontend/menu/menu_settings.c"
 #include "../frontend/menu/history.c"
 
-#if defined(HAVE_RMENU_GUI)
-#include "../frontend/menu/rmenu.c"
+#include "../file_list.c"
+
+#if defined(HAVE_RMENU)
+#include "../frontend/menu/disp/rmenu.c"
 #elif defined(HAVE_RGUI)
-#include "../frontend/menu/rgui.c"
+#include "../frontend/menu/disp/rgui.c"
 #elif defined(HAVE_RMENU_XUI)
-#include "../frontend/menu/rmenu_xui.cpp"
+#include "../frontend/menu/disp/rmenu_xui.cpp"
 #endif
 #endif
 
@@ -546,15 +585,39 @@ extern "C" {
 RZLIB
 ============================================================ */
 #ifdef WANT_MINIZ
-#include "../deps/miniz/miniz.c"
-#include "../deps/minizip/unzip.c"
+#include "../deps/rzlib/adler32.c"
+#include "../deps/rzlib/compress.c"
+#include "../deps/rzlib/crc32.c"
+#include "../deps/rzlib/deflate.c"
+#include "../deps/rzlib/gzclose.c"
+#include "../deps/rzlib/gzlib.c"
+#include "../deps/rzlib/gzread.c"
+#include "../deps/rzlib/gzwrite.c"
+#include "../deps/rzlib/inffast.c"
+#include "../deps/rzlib/inflate.c"
+#include "../deps/rzlib/inftrees.c"
+#include "../deps/rzlib/trees.c"
+#include "../deps/rzlib/uncompr.c"
+#include "../deps/rzlib/zutil.c"
+#include "../deps/rzlib/ioapi.c"
+#include "../deps/rzlib/unzip.c"
 #endif
 
 /*============================================================
 XML
 ============================================================ */
+#ifndef HAVE_LIBXML2
 #define RXML_LIBXML2_COMPAT
 #include "../compat/rxml/rxml.c"
+#endif
+/*============================================================
+ APPLE EXTENSIONS
+============================================================ */
+    
+#if defined(IOS) || defined(OSX)
+#include "../apple/common/setting_data.c"
+#include "../apple/common/core_info_ext.c"
+#endif
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2012 - Michael Lelli
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2012-2014 - Michael Lelli
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -109,8 +109,12 @@ static void gfx_ctx_set_resize(unsigned width, unsigned height)
 
 static void gfx_ctx_update_window_title(void)
 {
-   char buf[128];
-   gfx_get_fps(buf, sizeof(buf), false);
+   char buf[128], buf_fps[128];
+   bool fps_draw = g_settings.fps_show;
+   gfx_get_fps(buf, sizeof(buf), fps_draw ? buf_fps : NULL, sizeof(buf_fps));
+
+   if (fps_draw)
+      msg_queue_push(g_extern.msg_queue, buf_fps, 1, 1);
 }
 
 static void gfx_ctx_get_video_size(unsigned *width, unsigned *height)
@@ -263,9 +267,10 @@ static bool gfx_ctx_bind_api(enum gfx_ctx_api api, unsigned major, unsigned mino
 
 static void gfx_ctx_destroy(void)
 {
+   unsigned i;
    if (g_egl_dpy)
    {
-      for (unsigned i = 0; i < MAX_EGLIMAGE_TEXTURES; i++)
+      for (i = 0; i < MAX_EGLIMAGE_TEXTURES; i++)
       {
          if (eglBuffer[i] && peglDestroyImageKHR)
          {
@@ -323,7 +328,7 @@ static void gfx_ctx_destroy(void)
    g_config       = 0;
    g_inited       = false;
 
-   for (unsigned i = 0; i < MAX_EGLIMAGE_TEXTURES; i++)
+   for (i = 0; i < MAX_EGLIMAGE_TEXTURES; i++)
    {
       eglBuffer[i]     = NULL;
       g_egl_vgimage[i] = 0;
@@ -332,9 +337,8 @@ static void gfx_ctx_destroy(void)
 
 static void gfx_ctx_input_driver(const input_driver_t **input, void **input_data)
 {
-   void *linuxinput = input_linuxraw.init();
-   *input           = linuxinput ? &input_linuxraw : NULL;
-   *input_data      = linuxinput;
+   *input = NULL;
+   *input_data = NULL;
 }
 
 static bool gfx_ctx_has_focus(void)

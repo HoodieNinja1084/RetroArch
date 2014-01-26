@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -20,9 +20,8 @@
 #include "../gl_common.h"
 
 #include <EGL/egl.h>
-#include <android/looper.h>
 
-#include "../../frontend/frontend_android.h"
+#include "../../frontend/platform/platform_android.h"
 #include "../image.h"
 
 #include "../fonts/gl_font.h"
@@ -150,10 +149,6 @@ static bool gfx_ctx_init(void)
       goto error;
    }
 
-   ALooper *looper = ALooper_forThread();
-   if (!looper)
-      ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS);
-
    return true;
 
 error:
@@ -196,8 +191,12 @@ static void gfx_ctx_set_resize(unsigned width, unsigned height)
 
 static void gfx_ctx_update_window_title(void)
 {
-   char buf[128];
-   gfx_get_fps(buf, sizeof(buf), false);
+   char buf[128], buf_fps[128];
+   bool fps_draw = g_settings.fps_show;
+   gfx_get_fps(buf, sizeof(buf), fps_draw ? buf_fps : NULL, sizeof(buf_fps));
+
+   if (fps_draw)
+      msg_queue_push(g_extern.msg_queue, buf_fps, 1, 1);
 }
 
 static bool gfx_ctx_set_video_mode(
@@ -213,8 +212,9 @@ static bool gfx_ctx_set_video_mode(
 
 static void gfx_ctx_input_driver(const input_driver_t **input, void **input_data)
 {
-   *input = NULL;
-   *input_data = NULL;
+   void *androidinput = input_android.init();
+   *input = androidinput ? &input_android : NULL;
+   *input_data = androidinput;
 }
 
 static unsigned gfx_ctx_get_resolution_width(unsigned resolution_id)

@@ -12,21 +12,24 @@ OBJ = frontend/frontend.o \
 		hash.o \
 		dynamic.o \
 		dynamic_dummy.o \
-		message.o \
+		message_queue.o \
 		rewind.o \
 		movie.o \
 		gfx/gfx_common.o \
 		input/input_common.o \
+		input/keyboard_line.o \
 		input/autoconf/builtin_win.o \
 		core_options.o \
 		patch.o \
 		compat/compat.o \
 		screenshot.o \
 		cheats.o \
+		core_info.o \
 		audio/utils.o \
 		input/overlay.o \
 		fifo_buffer.o \
 		media/rarch.o \
+		gfx/context/win32_common.o \
 		gfx/scaler/scaler.o \
 		gfx/scaler/pixconv.o \
 		gfx/scaler/scaler_int.o \
@@ -48,6 +51,8 @@ JOBJ := conf/config_file.o \
 	input/dinput.o \
 	input/winxinput_joypad.o
 
+HEADERS = $(wildcard */*/*.h) $(wildcard */*.h) $(wildcard *.h)
+
 CC = gcc
 CXX = g++
 WINDRES = windres
@@ -64,7 +69,6 @@ HAVE_STDIN_CMD = 1
 HAVE_THREADS = 1
 HAVE_RGUI = 1
 DYNAMIC = 1
-HAVE_WIN32GUI = 1
 
 HAVE_WINXINPUT = 1
 
@@ -83,7 +87,7 @@ endif
 libretro ?= -lretro
 
 LIBS = -lm
-DEFINES = -I. -DHAVE_SCREENSHOTS -DHAVE_BSV_MOVIE -DHAVE_BUILTIN_AUTOCONFIG
+DEFINES = -I. -DHAVE_SCREENSHOTS -DHAVE_BSV_MOVIE -DHAVE_BUILTIN_AUTOCONFIG -DRARCH_INTERNAL
 LDFLAGS = -L. -static-libgcc
 
 ifeq ($(TDM_GCC),)
@@ -101,12 +105,8 @@ endif
 JLIBS =
 
 ifeq ($(HAVE_RGUI), 1)
-   DEFINES += -DHAVE_RGUI
-   OBJ += frontend/menu/menu_common.o frontend/menu/menu_context.o frontend/menu/rgui.o frontend/menu/history.o
-endif
-
-ifeq ($(HAVE_WIN32GUI), 1)
-   DEFINES += -DHAVE_WIN32GUI
+   DEFINES += -DHAVE_RGUI -DHAVE_MENU
+   OBJ += frontend/menu/menu_common.o frontend/menu/menu_settings.o frontend/menu/menu_context.o file_list.o frontend/menu/disp/rgui.o frontend/menu/history.o
 endif
 
 ifeq ($(HAVE_SDL), 1)
@@ -118,7 +118,7 @@ ifeq ($(HAVE_SDL), 1)
 endif
 
 ifeq ($(HAVE_THREADS), 1)
-   OBJ += autosave.o thread.o gfx/thread_wrapper.o audio/thread_wrapper.o
+   OBJ += autosave.o thread.o gfx/video_thread_wrapper.o audio/thread_wrapper.o
    DEFINES += -DHAVE_THREADS
 endif
 
@@ -142,7 +142,7 @@ else
 endif
 
 ifeq ($(HAVE_D3D9), 1)
-   OBJ += gfx/d3d9/d3d9.o gfx/d3d9/render_chain.o
+   OBJ += gfx/d3d9/d3d.o gfx/d3d9/d3d9_pc.o gfx/d3d9/render_chain.o gfx/fonts/d3d_font.o gfx/fonts/d3d_w32_font.o
    DEFINES += -DHAVE_WIN32_D3D9
    LIBS += -ld3d9 -lcg -lcgD3D9 -ld3dx9 -ldxguid
 endif
@@ -261,7 +261,15 @@ CXXFLAGS += -Wall -Wno-unused-result -Wno-unused-variable -I. -std=c++0x -D__STD
 ifeq ($(CXX_BUILD), 1)
    CFLAGS += -std=c++0x -xc++ -D__STDC_CONSTANT_MACROS
 else
-   CFLAGS += -std=gnu99
+   ifneq ($(GNU90_BUILD), 1)
+      CFLAGS += -std=gnu99
+   endif
+endif
+
+GIT_VERSION := $(shell git rev-parse --short HEAD 2>/dev/null)
+ifneq ($(GIT_VERSION),)
+   DEFINES += -DHAVE_GIT_VERSION -DGIT_VERSION=\"$(GIT_VERSION)\"
+   OBJ += git_version.o
 endif
 
 all: $(TARGET) $(JTARGET)
@@ -270,19 +278,25 @@ $(TARGET): $(OBJ)
 	@$(if $(Q), $(shell echo echo LD $@),)
 	$(Q)$(CXX) -o $@ $(OBJ) $(LIBS) $(LDFLAGS) $(LDCXXFLAGS)
 
-%.o: %.c
+%.o: %.c $(HEADERS)
 	@$(if $(Q), $(shell echo echo CC $<),)
 	$(Q)$(CC) $(CFLAGS) $(DEFINES) -c -o $@ $<
 
-tools/input_common_joyconfig.o: input/input_common.c
+.FORCE:
+
+git_version.o: git_version.c .FORCE
+	@$(if $(Q), $(shell echo echo CC $<),)
+	$(Q)$(CC) $(CFLAGS) $(DEFINES) -c -o $@ $<
+
+tools/input_common_joyconfig.o: input/input_common.c $(HEADERS)
 	@$(if $(Q), $(shell echo echo CC $<),)
 	$(Q)$(CC) $(CFLAGS) $(DEFINES) -DIS_JOYCONFIG -c -o $@ $<
 
-%.o: %.cpp
+%.o: %.cpp $(HEADERS)
 	@$(if $(Q), $(shell echo echo CXX $<),)
 	$(Q)$(CXX) $(CXXFLAGS) $(DEFINES) -c -o $@ $<
 
-%.o: %.rc
+%.o: %.rc $(HEADERS)
 	@$(if $(Q), $(shell echo echo WINDRES $<),)
 	$(Q)$(WINDRES) -o $@ $<
 
@@ -299,6 +313,7 @@ clean:
 	rm -f deps/miniz/*.o
 	rm -f frontend/*.o
 	rm -f frontend/menu/*.o
+	rm -f frontend/menu/disp/*.o
 	rm -f audio/*.o
 	rm -f audio/xaudio-c/*.o
 	rm -f compat/*.o
@@ -322,10 +337,10 @@ clean:
 	rm -f tools/*.o
 
 dist_x86: all
-	zip -r retroarch-win32-0.9.9.6.zip $(TARGET) $(JTARGET) retroarch.cfg
+	zip -r retroarch-win32-1.0.zip $(TARGET) $(JTARGET) retroarch.cfg
 
 dist_x86_64: all
-	zip -r retroarch-win64-0.9.9.6.zip $(TARGET) $(JTARGET) retroarch.cfg
+	zip -r retroarch-win64-1.0.zip $(TARGET) $(JTARGET) retroarch.cfg
 
 libs_x86:
 	wget http://themaister.net/retroarch-dl/RetroArch-win32-libs.zip

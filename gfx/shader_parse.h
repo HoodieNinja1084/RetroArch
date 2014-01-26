@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -54,7 +54,6 @@ enum gfx_wrap_type
 
 struct gfx_fbo_scale
 {
-   bool valid;
    enum gfx_scale_type type_x;
    enum gfx_scale_type type_y;
    float scale_x;
@@ -62,6 +61,7 @@ struct gfx_fbo_scale
    unsigned abs_x;
    unsigned abs_y;
    bool fp_fbo;
+   bool valid;
 };
 
 struct gfx_shader_pass

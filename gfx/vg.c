@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2012 - Michael Lelli
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2012-2014 - Michael Lelli
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -353,7 +353,6 @@ static void vg_copy_frame(void *data, const void *frame, unsigned width, unsigne
 
 static bool vg_frame(void *data, const void *frame, unsigned width, unsigned height, unsigned pitch, const char *msg)
 {
-
    RARCH_PERFORMANCE_INIT(vg_fr);
    RARCH_PERFORMANCE_START(vg_fr);
    vg_t *vg = (vg_t*)data;

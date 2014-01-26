@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -25,7 +25,7 @@
 #include "../gfx_context.h"
 #include "../gl_common.h"
 #include "../gfx_common.h"
-#include "../../media/resource.h"
+#include "win32_common.h"
 #include <windows.h>
 #include <commdlg.h>
 #include <string.h>
@@ -176,23 +176,12 @@ static void create_gl_context(HWND hwnd)
    }
 }
 
-static bool BrowseForFile(char *filename)
-{
-   OPENFILENAME ofn;
-   memset(&ofn, 0, sizeof(OPENFILENAME));
+#ifdef __cplusplus
+extern "C"
+#endif
+bool dinput_handle_message(void *dinput, UINT message, WPARAM wParam, LPARAM lParam);
 
-   ofn.lStructSize = sizeof(OPENFILENAME);
-   ofn.hwndOwner = g_hwnd;
-   ofn.lpstrFilter = "All Files\0*.*\0\0";
-   ofn.lpstrFile = filename;
-   ofn.lpstrTitle = "Select ROM";
-   ofn.lpstrDefExt = "";
-   ofn.nMaxFile = PATH_MAX;
-   ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-   if (GetOpenFileName(&ofn))
-      return true;
-   return false;
-}
+static void *dinput;
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
       WPARAM wparam, LPARAM lparam)
@@ -209,15 +198,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
          }
          break;
 
+      case WM_CHAR:
+      case WM_KEYDOWN:
+      case WM_KEYUP:
+      case WM_SYSKEYUP:
       case WM_SYSKEYDOWN:
-         switch (wparam)
-         {
-            case VK_F10:
-            case VK_MENU:
-            case VK_RSHIFT:
-               return 0;
-         }
-         break;
+         return win32_handle_keyboard_event(hwnd, message, wparam, lparam);
 
       case WM_CREATE:
          create_gl_context(hwnd);
@@ -244,31 +230,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
             g_resized = true;
          }
          return 0;
-
-      case WM_COMMAND:
-         switch (wparam & 0xffff)
-         {
-            case ID_M_OPENROM:
-            {
-               char rom_file[PATH_MAX] = {0};
-               if (BrowseForFile(rom_file))
-               {
-                  strlcpy(g_extern.fullpath, rom_file, sizeof(g_extern.fullpath));
-                  g_extern.lifecycle_mode_state |= (1ULL << MODE_LOAD_GAME);
-                  PostMessage(g_hwnd, WM_CLOSE, 0, 0);
-               }
-               break;
-            }
-            case ID_M_RESET:
-               rarch_game_reset();
-               break;
-            case ID_M_QUIT:
-               PostMessage(g_hwnd, WM_CLOSE, 0, 0);
-               break;
-         }
-         break;
    }
-
+   if (dinput_handle_message(dinput, message, wparam, lparam))
+      return 0;
    return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
@@ -319,9 +283,13 @@ static void gfx_ctx_set_resize(unsigned width, unsigned height)
 
 static void gfx_ctx_update_window_title(void)
 {
-   char buf[128];
-   if (gfx_get_fps(buf, sizeof(buf), false))
+   char buf[128], buf_fps[128];
+   bool fps_draw = g_settings.fps_show;
+   if (gfx_get_fps(buf, sizeof(buf), fps_draw ? buf_fps : NULL, sizeof(buf_fps)))
       SetWindowText(g_hwnd, buf);
+
+   if (fps_draw)
+      msg_queue_push(g_extern.msg_queue, buf_fps, 1, 1);
 }
 
 static void gfx_ctx_get_video_size(unsigned *width, unsigned *height)
@@ -469,17 +437,6 @@ static bool gfx_ctx_set_video_mode(
    if (!g_hwnd)
       goto error;
 
-#ifdef HAVE_WIN32GUI
-   if (!fullscreen)
-   {
-      SetMenu(g_hwnd, LoadMenu(GetModuleHandle(NULL), MAKEINTRESOURCE(IDR_MENU)));
-      RECT rcTemp = {0, 0, width, 0x7FFF}; // 0x7FFF = "Infinite" height
-      SendMessage(g_hwnd, WM_NCCALCSIZE, FALSE, (LPARAM)&rcTemp); // recalculate margin, taking possible menu wrap into account
-      unsigned menu_height = rcTemp.top + rect.top; // rect.top is negative after AdjustWindowRect().
-      SetWindowPos(g_hwnd, NULL, 0, 0, width, height + menu_height, SWP_NOMOVE);
-   }
-#endif
-
    if (!fullscreen || windowed_full)
    {
       ShowWindow(g_hwnd, SW_RESTORE);
@@ -561,7 +518,7 @@ static void gfx_ctx_destroy(void)
 
 static void gfx_ctx_input_driver(const input_driver_t **input, void **input_data)
 {
-   void *dinput = input_dinput.init();
+   dinput = input_dinput.init();
    *input       = dinput ? &input_dinput : NULL;
    *input_data  = dinput;
 }

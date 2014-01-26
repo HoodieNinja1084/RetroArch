@@ -1,29 +1,9 @@
-/*  RetroArch - A frontend for libretro.
- *  RGL - An OpenGL subset wrapper library.
- *  Copyright (C) 2012 - Hans-Kristian Arntzen
- *  Copyright (C) 2012 - Daniel De Matteis
- * 
- *  RetroArch is free software: you can redistribute it and/or modify it under the terms
- *  of the GNU General Public License as published by the Free Software Found-
- *  ation, either version 3 of the License, or (at your option) any later version.
- *
- *  RetroArch is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- *  PURPOSE.  See the GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along with RetroArch.
- *  If not, see <http://www.gnu.org/licenses/>.
- */
-
 #ifndef _RGL_CG_H
 #define _RGL_CG_H
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#include <algorithm>
-#include <iostream>
 
 #include <Cg/cg.h>
 #include <Cg/cgGL.h>
@@ -41,13 +21,9 @@
 
 #include "cg/cgbtypes.h"
 #include "cg/cgnv2rt.h"
-#include "cg/cgnv2elfversion.h"
 
 #include "cg/cgbio.hpp"
-#include "cg/cgbiimpl.hpp"
-#include "cg/cgboimpl.hpp"
 #include "cg/nvbiimpl.hpp"
-#include "cg/nvboimpl.hpp"
 #include "cg/cgbutils.hpp"
 #include "cg/cgbtypes.h"
 

@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -29,19 +29,33 @@
 #if defined(__CELLOS_LV2__)
 #define EXT_EXECUTABLES "self|SELF|bin|BIN"
 #define SALAMANDER_FILE "EBOOT.BIN"
+#define PLATFORM_NAME   "ps3"
 #define DEFAULT_EXE_EXT ".SELF"
 #elif defined(_XBOX1)
 #define EXT_EXECUTABLES "xbe|XBE"
 #define SALAMANDER_FILE "default.xbe"
 #define DEFAULT_EXE_EXT ".xbe"
+#define PLATFORM_NAME   "xdk1"
 #elif defined(_XBOX360)
 #define EXT_EXECUTABLES "xex|XEX"
 #define SALAMANDER_FILE "default.xex"
 #define DEFAULT_EXE_EXT ".xex"
+#define PLATFORM_NAME   "xdk360"
 #elif defined(GEKKO)
 #define EXT_EXECUTABLES "dol|DOL"
 #define SALAMANDER_FILE "boot.dol"
 #define DEFAULT_EXE_EXT ".dol"
+#ifdef HW_RVL
+#define PLATFORM_NAME   "wii"
+#else
+#define PLATFORM_NAME   "ngc"
+#endif
+#elif defined(ANDROID)
+#define PLATFORM_NAME   "android"
+#elif defined(IOS)
+#define PLATFORM_NAME   "ios"
+#elif defined(__QNX__)
+#define PLATFORM_NAME   "qnx"
 #elif defined(EMSCRIPTEN)
 #define EXT_EXECUTABLES ""
 #endif

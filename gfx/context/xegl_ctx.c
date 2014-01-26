@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -38,6 +38,9 @@ static bool g_has_focus;
 static bool g_true_full;
 static unsigned g_screen;
 
+static XIM g_xim;
+static XIC g_xic;
+
 static EGLContext g_egl_ctx;
 static EGLSurface g_egl_surf;
 static EGLDisplay g_egl_dpy;
@@ -50,6 +53,8 @@ static volatile sig_atomic_t g_quit;
 static bool g_inited;
 static unsigned g_interval;
 static enum gfx_ctx_api g_api;
+static unsigned g_major;
+static unsigned g_minor;
 
 static void sighandler(int sig)
 {
@@ -137,6 +142,8 @@ static void gfx_ctx_check_window(bool *quit,
    while (XPending(g_dpy))
    {
       XNextEvent(g_dpy, &event);
+      bool filter = XFilterEvent(&event, g_win);
+
       switch (event.type)
       {
          case ClientMessage:
@@ -158,7 +165,7 @@ static void gfx_ctx_check_window(bool *quit,
 
          case KeyPress:
          case KeyRelease:
-            x11_handle_key_event(&event);
+            x11_handle_key_event(&event, g_xic, filter);
             break;
       }
    }
@@ -179,9 +186,13 @@ static void gfx_ctx_set_resize(unsigned width, unsigned height)
 
 static void gfx_ctx_update_window_title(void)
 {
-   char buf[128];
-   if (gfx_get_fps(buf, sizeof(buf), false))
+   char buf[128], buf_fps[128];
+   bool fps_draw = g_settings.fps_show;
+   if (gfx_get_fps(buf, sizeof(buf), fps_draw ? buf_fps : NULL, sizeof(buf_fps)))
       XStoreName(g_dpy, g_win, buf);
+
+   if (fps_draw)
+      msg_queue_push(g_extern.msg_queue, buf_fps, 1, 1);
 }
 
 static void gfx_ctx_get_video_size(unsigned *width, unsigned *height)
@@ -239,6 +250,14 @@ static bool gfx_ctx_init(void)
       EGL_NONE,
    };
 
+#ifdef EGL_OPENGL_ES3_BIT_KHR
+   static const EGLint egl_attribs_gles3[] = {
+      EGL_ATTRIBS_BASE,
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
+      EGL_NONE,
+   };
+#endif
+
    static const EGLint egl_attribs_vg[] = {
       EGL_ATTRIBS_BASE,
       EGL_RENDERABLE_TYPE, EGL_OPENVG_BIT,
@@ -252,7 +271,12 @@ static bool gfx_ctx_init(void)
          attrib_ptr = egl_attribs_gl;
          break;
       case GFX_CTX_OPENGL_ES_API:
-         attrib_ptr = egl_attribs_gles;
+#ifdef EGL_OPENGL_ES3_BIT_KHR
+         if (g_major >= 3)
+            attrib_ptr = egl_attribs_gles3;
+         else
+#endif
+            attrib_ptr = egl_attribs_gles;
          break;
       case GFX_CTX_OPENVG_API:
          attrib_ptr = egl_attribs_vg;
@@ -381,9 +405,9 @@ static bool gfx_ctx_set_video_mode(
          CWBorderPixel | CWColormap | CWEventMask | (true_full ? CWOverrideRedirect : 0), &swa);
    XSetWindowBackground(g_dpy, g_win, 0);
 
-   // GLES 2.0. Don't use for any other API.
-   static const EGLint egl_ctx_gles_attribs[] = {
-      EGL_CONTEXT_CLIENT_VERSION, 2,
+   // GLES 2.0+. Don't use for any other API.
+   const EGLint egl_ctx_gles_attribs[] = {
+      EGL_CONTEXT_CLIENT_VERSION, g_major ? g_major : 2,
       EGL_NONE,
    };
 
@@ -452,6 +476,9 @@ static bool gfx_ctx_set_video_mode(
    g_has_focus = true;
    g_inited    = true;
 
+   if (!x11_create_input_context(g_dpy, g_win, &g_xim, &g_xic))
+      goto error;
+
    driver.display_type  = RARCH_DISPLAY_X11;
    driver.video_display = (uintptr_t)g_dpy;
    driver.video_window  = (uintptr_t)g_win;
@@ -469,6 +496,7 @@ error:
 
 static void gfx_ctx_destroy(void)
 {
+   x11_destroy_input_context(&g_xim, &g_xic);
    if (g_egl_dpy)
    {
       if (g_egl_ctx)
@@ -557,14 +585,18 @@ static gfx_ctx_proc_t gfx_ctx_get_proc_address(const char *symbol)
 
 static bool gfx_ctx_bind_api(enum gfx_ctx_api api, unsigned major, unsigned minor)
 {
-   (void)major;
-   (void)minor;
+   g_major = major;
+   g_minor = minor;
    g_api = api;
    switch (api)
    {
       case GFX_CTX_OPENGL_API:
          return eglBindAPI(EGL_OPENGL_API);
       case GFX_CTX_OPENGL_ES_API:
+#ifndef EGL_OPENGL_ES3_BIT_KHR
+         if (major >= 3)
+            return false;
+#endif
          return eglBindAPI(EGL_OPENGL_ES_API);
       case GFX_CTX_OPENVG_API:
          return eglBindAPI(EGL_OPENVG_API);

@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -21,6 +21,10 @@
 
 #ifdef HAVE_CONFIG_H
 #include "../config.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define MAX_EGLIMAGE_TEXTURES 32
@@ -100,6 +104,7 @@ typedef struct gfx_ctx_driver
 extern const gfx_ctx_driver_t gfx_ctx_sdl_gl;
 extern const gfx_ctx_driver_t gfx_ctx_x_egl;
 extern const gfx_ctx_driver_t gfx_ctx_glx;
+extern const gfx_ctx_driver_t gfx_ctx_d3d9;
 extern const gfx_ctx_driver_t gfx_ctx_drm_egl;
 extern const gfx_ctx_driver_t gfx_ctx_android;
 extern const gfx_ctx_driver_t gfx_ctx_ps3;
@@ -113,6 +118,10 @@ extern const gfx_ctx_driver_t gfx_ctx_null;
 
 const gfx_ctx_driver_t *gfx_ctx_find_driver(const char *ident); // Finds driver with ident. Does not initialize.
 const gfx_ctx_driver_t *gfx_ctx_init_first(enum gfx_ctx_api api, unsigned major, unsigned minor); // Finds first suitable driver and initializes.
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

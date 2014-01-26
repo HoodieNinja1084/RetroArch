@@ -1,5 +1,5 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
  *
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -28,6 +28,9 @@ static const gfx_ctx_driver_t *gfx_ctx_drivers[] = {
 #endif
 #if defined(_XBOX)
    &gfx_ctx_xdk,
+#endif
+#if defined(HAVE_WIN32_D3D9)
+   &gfx_ctx_d3d9,
 #endif
 #if defined(HAVE_VIDEOCORE)
    &gfx_ctx_videocore,
@@ -60,7 +63,8 @@ static const gfx_ctx_driver_t *gfx_ctx_drivers[] = {
 
 const gfx_ctx_driver_t *gfx_ctx_find_driver(const char *ident)
 {
-   for (unsigned i = 0; i < ARRAY_SIZE(gfx_ctx_drivers); i++)
+   unsigned i;
+   for (i = 0; i < ARRAY_SIZE(gfx_ctx_drivers); i++)
    {
       if (strcmp(gfx_ctx_drivers[i]->ident, ident) == 0)
          return gfx_ctx_drivers[i];
@@ -71,7 +75,8 @@ const gfx_ctx_driver_t *gfx_ctx_find_driver(const char *ident)
 
 const gfx_ctx_driver_t *gfx_ctx_init_first(enum gfx_ctx_api api, unsigned major, unsigned minor)
 {
-   for (unsigned i = 0; i < ARRAY_SIZE(gfx_ctx_drivers); i++)
+   unsigned i;
+   for (i = 0; i < ARRAY_SIZE(gfx_ctx_drivers); i++)
    {
       if (gfx_ctx_drivers[i]->bind_api(api, major, minor))
       {

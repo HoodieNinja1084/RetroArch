@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -58,19 +58,11 @@ const struct platform_bind platform_keys[] = {
    { PSP_GAMEPAD_LSTICK_RIGHT_MASK, "LStick Right" },
    { PSP_GAMEPAD_LSTICK_UP_MASK, "LStick Up" },
    { PSP_GAMEPAD_LSTICK_DOWN_MASK, "LStick Down" },
-   { PSP_GAMEPAD_DPAD_LEFT | PSP_GAMEPAD_LSTICK_LEFT_MASK, "LStick D-Pad Left" },
-   { PSP_GAMEPAD_DPAD_RIGHT | PSP_GAMEPAD_LSTICK_RIGHT_MASK, "LStick D-Pad Right" },
-   { PSP_GAMEPAD_DPAD_UP | PSP_GAMEPAD_LSTICK_UP_MASK, "LStick D-Pad Up" },
-   { PSP_GAMEPAD_DPAD_DOWN | PSP_GAMEPAD_LSTICK_DOWN_MASK, "LStick D-Pad Down" },
 #ifdef SN_TARGET_PSP2
    { PSP_GAMEPAD_RSTICK_LEFT_MASK, "RStick Left" },
    { PSP_GAMEPAD_RSTICK_RIGHT_MASK, "RStick Right" },
    { PSP_GAMEPAD_RSTICK_UP_MASK, "RStick Up" },
    { PSP_GAMEPAD_RSTICK_DOWN_MASK, "RStick Down" },
-   { PSP_GAMEPAD_DPAD_LEFT | PSP_GAMEPAD_RSTICK_LEFT_MASK, "RStick D-Pad Left" },
-   { PSP_GAMEPAD_DPAD_RIGHT | PSP_GAMEPAD_RSTICK_RIGHT_MASK, "RStick D-Pad Right" },
-   { PSP_GAMEPAD_DPAD_UP | PSP_GAMEPAD_RSTICK_UP_MASK, "RStick D-Pad Up" },
-   { PSP_GAMEPAD_DPAD_DOWN | PSP_GAMEPAD_RSTICK_DOWN_MASK, "RStick D-Pad Down" },
 #else
    { 0, "Unused" },
    { 0, "Unused" },
@@ -158,7 +150,6 @@ static void psp_input_set_keybinds(void *data, unsigned device, unsigned port,
          g_settings.input.binds[port][i].def_joykey = platform_keys[i].joykey;
          g_settings.input.binds[port][i].joykey = g_settings.input.binds[port][i].def_joykey;
       }
-      g_settings.input.dpad_emulation[port] = ANALOG_DPAD_LSTICK;
    }
 }
 
@@ -168,36 +159,6 @@ static void* psp_input_initialize(void)
    sceCtrlSetSamplingCycle(0);
 #endif
    sceCtrlSetSamplingMode(DEFAULT_SAMPLING_MODE);
-
-   for(unsigned i = 0; i < MAX_PLAYERS; i++)
-      if (driver.input->set_keybinds)
-         driver.input->set_keybinds(driver.input_data, 0, i, 0,
-               (1ULL << KEYBINDS_ACTION_SET_DEFAULT_BINDS));
-
-   for(unsigned i = 0; i < MAX_PADS; i++)
-   {
-      unsigned keybind_action = 0;
-
-      switch (g_settings.input.dpad_emulation[i])
-      {
-         case ANALOG_DPAD_LSTICK:
-            keybind_action = (1ULL << KEYBINDS_ACTION_SET_ANALOG_DPAD_LSTICK);
-            break;
-         case ANALOG_DPAD_RSTICK:
-            keybind_action = (1ULL << KEYBINDS_ACTION_SET_ANALOG_DPAD_RSTICK);
-            break;
-         case ANALOG_DPAD_NONE:
-            keybind_action = (1ULL << KEYBINDS_ACTION_SET_ANALOG_DPAD_NONE);
-            break;
-         default:
-            break;
-      }
-
-      if (keybind_action)
-         if (driver.input->set_keybinds)
-            driver.input->set_keybinds(driver.input_data, 0, i, 0,
-                  action);
-   }
 
    return (void*)-1;
 }
@@ -216,12 +177,24 @@ static bool psp_input_key_pressed(void *data, int key)
    }
 }
 
+static uint64_t psp_input_get_capabilities(void *data)
+{
+   uint64_t caps = 0;
+
+   caps |= (1 << RETRO_DEVICE_JOYPAD);
+
+   return caps;
+}
+
 const input_driver_t input_psp = {
-   .init = psp_input_initialize,
-   .poll = psp_input_poll,
-   .input_state = psp_input_state,
-   .key_pressed = psp_input_key_pressed,
-   .free = psp_input_free_input,
-   .set_keybinds = psp_input_set_keybinds,
-   .ident = "psp",
+   psp_input_initialize,
+   psp_input_poll,
+   psp_input_state,
+   psp_input_key_pressed,
+   psp_input_free_input,
+   psp_input_set_keybinds,
+   NULL,
+   NULL,
+   psp_input_get_capabilities,
+   "psp",
 };

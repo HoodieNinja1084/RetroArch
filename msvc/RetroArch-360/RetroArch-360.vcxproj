@@ -113,8 +113,9 @@
       <MinimalRebuild>true</MinimalRebuild>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PreprocessorDefinitions>_DEBUG;_XBOX;HAVE_XINPUT2;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;HAVE_RARCH_MAIN_IMPLEMENTATION;RARCH_CONSOLE;HAVE_RMENU;HAVE_RMENU_XUI;HAVE_FILEBROWSER;HAVE_NETPLAY;HAVE_SOCKET_LEGACY;HAVE_ZLIB;HAVE_RARCH_MAIN_WRAP;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_XBOX;HAVE_XINPUT2;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE;HAVE_RMENU_XUI;HAVE_MENU;HAVE_NETPLAY;HAVE_SOCKET_LEGACY;HAVE_ZLIB;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;RARCH_INTERNAL;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\deps\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -151,8 +152,9 @@
       <PREfast>AnalyzeOnly</PREfast>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PreprocessorDefinitions>_DEBUG;_XBOX;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;HAVE_RARCH_MAIN_IMPLEMENTATION;HAVE_FILEBROWSER;RARCH_CONSOLE;HAVE_RMENU;HAVE_RMENU_XUI;HAVE_ZLIB;HAVE_RARCH_MAIN_WRAP;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;WANT_RPNG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_XBOX;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE;HAVE_RMENU_XUI;HAVE_MENU;HAVE_ZLIB;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;RARCH_INTERNAL;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;WANT_RPNG</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\deps\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -190,8 +192,9 @@
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;PROFILE;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE;HAVE_RMENU;HAVE_RMENU_XUI;HAVE_RARCH_MAIN_IMPLEMENTATION;HAVE_FILEBROWSER;HAVE_ZLIB;HAVE_RARCH_MAIN_WRAP;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;PROFILE;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE;HAVE_RMENU_XUI;HAVE_MENU;HAVE_ZLIB;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;RARCH_INTERNAL;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\deps\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -234,7 +237,8 @@
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;PROFILE;FASTCAP;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;HAVE_RARCH_MAIN_IMPLEMENTATION;HAVE_FILEBROWSER;HAVE_ZLIB;HAVE_RARCH_MAIN_WRAP;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_RMENU;HAVE_RMENU_XUI;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;PROFILE;FASTCAP;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;HAVE_ZLIB;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;RARCH_INTERNAL;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_RMENU_XUI;HAVE_MENU;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\deps\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -275,7 +279,8 @@
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;HAVE_RARCH_MAIN_IMPLEMENTATION;RARCH_CONSOLE=1;HAVE_FILEBROWSER;HAVE_NETPLAY;HAVE_SOCKET_LEGACY;HAVE_ZLIB;HAVE_RARCH_MAIN_WRAP;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_RMENU;HAVE_RMENU_XUI;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE=1;HAVE_NETPLAY;HAVE_SOCKET_LEGACY;HAVE_ZLIB;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;RARCH_INTERNAL;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_RMENU_XUI;HAVE_MENU;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\deps\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -316,7 +321,8 @@
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;LTCG;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE;HAVE_RMENU;HAVE_RMENU_XUI;HAVE_RARCH_MAIN_IMPLEMENTATION;HAVE_FILEBROWSER;HAVE_NETPLAY;HAVE_SOCKET_LEGACY;HAVE_ZLIB;HAVE_RARCH_MAIN_WRAP;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;LTCG;%(PreprocessorDefinitions);HAVE_XINPUT2;_CRT_SECURE_NO_WARNINGS;RARCH_CONSOLE;HAVE_RMENU_XUI;HAVE_MENU;HAVE_NETPLAY;HAVE_SOCKET_LEGACY;HAVE_ZLIB;HAVE_RARCH_EXEC;HAVE_LIBRETRO_MANAGEMENT;D3DCOMPILE_USEVOIDS;HAVE_GRIFFIN;HAVE_HLSL;HAVE_VID_CONTEXT;HAVE_D3D9;RARCH_INTERNAL;_XBOX360;HAVE_FBO;HAVE_SCREENSHOTS;WANT_MINIZ;SINC_LOWER_QUALITY;HAVE_XAUDIO;WANT_RPNG</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\deps\rzlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -371,7 +377,7 @@
     <ClInclude Include="..\..\file.h" />
     <ClInclude Include="..\..\general.h" />
     <ClInclude Include="..\..\libretro.hpp" />
-    <ClInclude Include="..\..\message.h" />
+    <ClInclude Include="..\..\message_queue.h" />
     <ClInclude Include="..\..\netplay.h" />
     <ClInclude Include="..\..\rewind.h" />
     <ClInclude Include="..\..\screenshot.h" />

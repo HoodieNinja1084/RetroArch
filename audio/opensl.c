@@ -1,6 +1,6 @@
 /*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -98,6 +98,7 @@ static void sl_free(void *data)
 
 static void *sl_init(const char *device, unsigned rate, unsigned latency)
 {
+   unsigned i;
    (void)device;
 
    SLDataFormat_PCM fmt_pcm = {0};
@@ -140,7 +141,7 @@ static void *sl_init(const char *device, unsigned rate, unsigned latency)
    if (!sl->buffer_chunk)
       goto error;
 
-   for (unsigned i = 0; i < sl->buf_count; i++)
+   for (i = 0; i < sl->buf_count; i++)
       sl->buffer[i] = sl->buffer_chunk + i * sl->buf_size;
 
    RARCH_LOG("[SLES]: Setting audio latency: Block size = %u, Blocks = %u, Total = %u ...\n",
@@ -181,7 +182,7 @@ static void *sl_init(const char *device, unsigned rate, unsigned latency)
    // Enqueue a bit to get stuff rolling.
    sl->buffered_blocks = sl->buf_count;
    sl->buffer_index = 0;
-   for (unsigned i = 0; i < sl->buf_count; i++)
+   for (i = 0; i < sl->buf_count; i++)
       (*sl->buffer_queue)->Enqueue(sl->buffer_queue, sl->buffer[i], sl->buf_size);
 
    GOTO_IF_FAIL(SLObjectItf_GetInterface(sl->buffer_queue_object, SL_IID_PLAY, &sl->player));

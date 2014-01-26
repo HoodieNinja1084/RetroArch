@@ -1,6 +1,6 @@
 ﻿/*  RetroArch - A frontend for libretro.
- *  Copyright (C) 2010-2013 - Hans-Kristian Arntzen
- *  Copyright (C) 2011-2013 - Daniel De Matteis
+ *  Copyright (C) 2010-2014 - Hans-Kristian Arntzen
+ *  Copyright (C) 2011-2014 - Daniel De Matteis
  * 
  *  RetroArch is free software: you can redistribute it and/or modify it under the terms
  *  of the GNU General Public License as published by the Free Software Found-
@@ -28,26 +28,18 @@
 
 #include "./../gfx/gfx_context.h"
 #include "../general.h"
-#include "../message.h"
+#include "../message_queue.h"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#ifdef _XBOX1
-#define HAVE_MENU_PANEL
-#endif
-
 #include "../xdk/xdk_resources.h"
-
-#ifdef HAVE_RGUI
-#include "../frontend/menu/rgui.h"
-#endif
 
 #if defined(_XBOX1)
 unsigned font_x, font_y;
 #elif defined(_XBOX360)
-#include "../frontend/menu/rmenu_xui.h"
+
 const DWORD g_MapLinearToSrgbGpuFormat[] = 
 {
    GPUTEXTUREFORMAT_1_REVERSE,
@@ -215,8 +207,12 @@ static void xdk_d3d_set_viewport(bool force_full)
    unsigned width, height;      // Set the viewport based on the current resolution
    int m_viewport_x_temp, m_viewport_y_temp, m_viewport_width_temp, m_viewport_height_temp;
    float m_zNear, m_zFar;
+   width = 0;
+   height = 0;
 
-   d3d->ctx_driver->get_video_size(&width, &height);
+   if (d3d->ctx_driver)
+      d3d->ctx_driver->get_video_size(&width, &height);
+
    m_viewport_x_temp = 0;
    m_viewport_y_temp = 0;
    m_viewport_width_temp = width;
@@ -334,7 +330,6 @@ void xdk_d3d_deinit_fbo(void *data)
 
 void xdk_d3d_init_fbo(void *data)
 {
-   HRESULT ret;
    xdk_d3d_video_t *d3d = (xdk_d3d_video_t*)data;
 
 #if 0
@@ -374,80 +369,6 @@ static bool xdk_d3d_set_shader(void *data, enum rarch_shader_type type, const ch
    /* TODO - stub */
    xdk_d3d_video_t *d3d = (xdk_d3d_video_t*)data;
    return true;
-}
-
-void xdk_d3d_generate_pp(D3DPRESENT_PARAMETERS *d3dpp, const video_info_t *video)
-{
-   xdk_d3d_video_t *d3d = (xdk_d3d_video_t*)driver.video_data;
-   uint64_t lifecycle_mode_state = g_extern.lifecycle_mode_state;
-
-   memset(d3dpp, 0, sizeof(*d3dpp));
-
-   d3d->texture_fmt = video->rgb32 ? D3DFMT_X8R8G8B8 : D3DFMT_LIN_R5G6B5;
-   d3d->base_size   = video->rgb32 ? sizeof(uint32_t) : sizeof(uint16_t);
-
-   unsigned width, height;
-   d3d->ctx_driver->get_video_size(&width, &height);
-
-   d3dpp->BackBufferWidth  = d3d->win_width = width;
-   d3dpp->BackBufferHeight = d3d->win_height = height;
-
-#if defined(_XBOX1)
-   // Get the "video mode"
-   DWORD video_mode = XGetVideoFlags();
-
-   // Check if we are able to use progressive mode
-   if (video_mode & XC_VIDEO_FLAGS_HDTV_480p)
-      d3dpp->Flags = D3DPRESENTFLAG_PROGRESSIVE;
-   else
-      d3dpp->Flags = D3DPRESENTFLAG_INTERLACED;
-
-   // Only valid in PAL mode, not valid for HDTV modes!
-   if (XGetVideoStandard() == XC_VIDEO_STANDARD_PAL_I)
-   {
-      if (video_mode & XC_VIDEO_FLAGS_PAL_60Hz)
-         d3dpp->FullScreen_RefreshRateInHz = 60;
-      else
-         d3dpp->FullScreen_RefreshRateInHz = 50;
-   }
-
-   if (XGetAVPack() == XC_AV_PACK_HDTV)
-   {
-      if (video_mode & XC_VIDEO_FLAGS_HDTV_480p)
-         d3dpp->Flags = D3DPRESENTFLAG_PROGRESSIVE;
-      else if (video_mode & XC_VIDEO_FLAGS_HDTV_720p)
-         d3dpp->Flags = D3DPRESENTFLAG_PROGRESSIVE;
-      else if (video_mode & XC_VIDEO_FLAGS_HDTV_1080i)
-         d3dpp->Flags = D3DPRESENTFLAG_INTERLACED;
-   }
-
-   if (lifecycle_mode_state & MODE_MENU_WIDESCREEN)
-      d3dpp->Flags |= D3DPRESENTFLAG_WIDESCREEN;
-
-   d3dpp->BackBufferFormat                     = D3DFMT_X8R8G8B8;
-   d3dpp->FullScreen_PresentationInterval	   = d3d->vsync ? D3DPRESENT_INTERVAL_ONE : D3DPRESENT_INTERVAL_IMMEDIATE;
-   d3dpp->SwapEffect                           = D3DSWAPEFFECT_COPY;
-#elif defined(_XBOX360)
-   if (!(lifecycle_mode_state & (1ULL << MODE_MENU_WIDESCREEN)))
-      d3dpp->Flags |= D3DPRESENTFLAG_NO_LETTERBOX;
-
-   if (g_extern.console.screen.gamma_correction)
-   {
-      d3dpp->BackBufferFormat        = (D3DFORMAT)MAKESRGBFMT(d3d->texture_fmt);
-      d3dpp->FrontBufferFormat       = (D3DFORMAT)MAKESRGBFMT(D3DFMT_LE_X8R8G8B8);
-   }
-   else
-   {
-      d3dpp->BackBufferFormat        = d3d->texture_fmt;
-      d3dpp->FrontBufferFormat       = D3DFMT_LE_X8R8G8B8;
-   }
-   d3dpp->MultiSampleQuality      = 0;
-   d3dpp->PresentationInterval    = d3d->vsync ? D3DPRESENT_INTERVAL_ONE : D3DPRESENT_INTERVAL_IMMEDIATE;
-   d3dpp->SwapEffect              = D3DSWAPEFFECT_DISCARD;
-#endif
-   d3dpp->BackBufferCount         = 2;
-   d3dpp->MultiSampleType         = D3DMULTISAMPLE_NONE;
-   d3dpp->EnableAutoDepthStencil  = FALSE;
 }
 
 static void xdk_d3d_init_textures(void *data, const video_info_t *video)
@@ -664,7 +585,9 @@ static void *xdk_d3d_init(const video_info_t *video, const input_driver_t **inpu
    }
 #endif
 
-   d3d->ctx_driver->get_video_size(&d3d->win_width, &d3d->win_height);
+   if (d3d->ctx_driver)
+      d3d->ctx_driver->get_video_size(&d3d->win_width, &d3d->win_height);
+
    RARCH_LOG("Detecting screen resolution: %ux%u.\n", d3d->win_width, d3d->win_height);
 
    d3d->ctx_driver->swap_interval(d3d->vsync ? 1 : 0);
@@ -685,9 +608,19 @@ static void *xdk_d3d_init(const video_info_t *video, const input_driver_t **inpu
    xdk_d3d_init_fbo(d3d);
 #endif
 
-   xdk_d3d_set_rotation(d3d, g_extern.console.screen.orientation);
+   if (input && input_data)
+      d3d->ctx_driver->input_driver(input, input_data);
 
-   //really returns driver.video_data to driver.video_data - see comment above
+   xdk_d3d_set_rotation(d3d, g_settings.video.rotation);
+
+#if defined(_XBOX1)
+   font_x = 0;
+   font_y = 0;
+#elif defined(_XBOX360)
+   strlcpy(g_settings.video.font_path, "game:\\media\\Arial_12.xpr", sizeof(g_settings.video.font_path));
+#endif
+   d3d->font_ctx = d3d_font_init_first(d3d, g_settings.video.font_path, 0 /* font size - fixed/unused */);
+
    return d3d;
 }
 
@@ -764,13 +697,13 @@ static bool texture_image_render(struct texture_image *out_img,
 }
 #endif
 
-#if defined(HAVE_RGUI) || defined(HAVE_RMENU)
+#ifdef HAVE_MENU
 
-#ifdef HAVE_MENU_PANEL
-extern struct texture_image *menu_panel;
+#ifdef HAVE_RMENU_XUI
+extern bool menu_iterate_xui(void);
 #endif
 
-static inline void xdk_d3d_draw_texture(void *data)
+static void xdk_d3d_draw_texture(void *data)
 {
    xdk_d3d_video_t *d3d = (xdk_d3d_video_t*)data;
 
@@ -786,19 +719,9 @@ static inline void xdk_d3d_draw_texture(void *data)
       d3d->d3d_render_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
       d3d->d3d_render_device->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
       texture_image_render(menu_texture, menu_texture->x, menu_texture->y,
-         640, 480, true);
+         d3d->win_width, d3d->win_height, true);
       d3d->d3d_render_device->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
    }
-
-#ifdef HAVE_MENU_PANEL
-   if ((menu_panel->x != 0) || (menu_panel->y != 0))
-   {
-      texture_image_render(menu_panel, menu_panel->x, menu_panel->y,
-         610, 20, false);
-      menu_panel->x = 0;
-      menu_panel->y = 0;
-   }
-#endif
 #endif
 }
 #endif
@@ -812,7 +735,6 @@ static bool xdk_d3d_frame(void *data, const void *frame,
 #endif
    xdk_d3d_video_t *d3d = (xdk_d3d_video_t*)data;
    LPDIRECT3DDEVICE d3dr = (LPDIRECT3DDEVICE)d3d->d3d_render_device;
-   uint64_t lifecycle_mode_state = g_extern.lifecycle_mode_state;
 #if 0 /* ifdef HAVE_FBO */
    D3DSurface* pRenderTarget0;
 #endif
@@ -878,7 +800,7 @@ static bool xdk_d3d_frame(void *data, const void *frame,
    {
 #ifdef _XBOX1
       d3dr->SetFlickerFilter(g_extern.console.screen.flicker_filter_index);
-      d3dr->SetSoftDisplayFilter(g_extern.lifecycle_mode_state & (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE));
+      d3dr->SetSoftDisplayFilter(g_extern.lifecycle_state & (1ULL << MODE_VIDEO_SOFT_FILTER_ENABLE));
 #endif
       xdk_d3d_set_viewport(false);
       d3d->should_resize = false;
@@ -985,32 +907,29 @@ NULL, NULL, NULL, 0);
    }
 #endif
 
-#if defined(HAVE_RGUI) || defined(HAVE_RMENU)
-
-#if defined(HAVE_RMENU_XUI) || defined(HAVE_RGUI)
-   if (d3d->rgui_texture_enable)
-#endif
+#ifdef HAVE_MENU
+   if (d3d && d3d->rgui_texture_enable)
       xdk_d3d_draw_texture(d3d);
 #endif
 
-#if defined(_XBOX1)
-   float msg_width  = 60;
-   float msg_height = 365;
-#elif defined(_XBOX360)
-   float msg_width  = (lifecycle_mode_state & (1ULL << MODE_MENU_HD)) ? 160 : 100;
-   float msg_height = 120;
-#endif
+   if (d3d && d3d->ctx_driver && d3d->ctx_driver->update_window_title)
+      d3d->ctx_driver->update_window_title();
 
-#if 0
    if (msg)
    {
+#if defined(_XBOX1)
+      float msg_width  = 60;
+      float msg_height = 365;
+#elif defined(_XBOX360)
+      float msg_width  = (g_extern.lifecycle_state & (1ULL << MODE_MENU_HD)) ? 160 : 100;
+      float msg_height = 120;
+#endif
+      font_params_t font_parms = {0};
       font_parms.x = msg_width;
       font_parms.y = msg_height;
+      font_parms.scale = 21;
       d3d->font_ctx->render_msg(d3d, msg, &font_parms);
    }
-#endif
-
-   d3d->ctx_driver->update_window_title();
 
    gfx_ctx_xdk_swap_buffers();
 
@@ -1067,7 +986,7 @@ static void xdk_d3d_apply_state_changes(void *data)
    d3d->should_resize = true;
 }
 
-#if defined(HAVE_RGUI) || defined(HAVE_RMENU)
+#ifdef HAVE_MENU
 static void xdk_d3d_set_texture_frame(void *data,
    const void *frame, bool rgb32, unsigned width, unsigned height,
    float alpha)
@@ -1104,7 +1023,7 @@ static const video_poke_interface_t d3d_poke_interface = {
 #endif
    xdk_d3d_set_aspect_ratio,
    xdk_d3d_apply_state_changes,
-#if defined(HAVE_RGUI) || defined(HAVE_RMENU)
+#ifdef HAVE_MENU
    xdk_d3d_set_texture_frame,
    xdk_d3d_set_texture_enable,
 #endif
@@ -1115,31 +1034,6 @@ static void d3d_get_poke_interface(void *data, const video_poke_interface_t **if
 {
    (void)data;
    *iface = &d3d_poke_interface;
-}
-
-static void xdk_d3d_start(void)
-{
-   video_info_t video_info = {0};
-
-   video_info.vsync = g_settings.video.vsync;
-   video_info.force_aspect = false;
-   video_info.smooth = g_settings.video.smooth;
-   video_info.input_scale = 2;
-   video_info.fullscreen = true;
-   video_info.rgb32 = false;
-
-   driver.video_data = xdk_d3d_init(&video_info, NULL, NULL);
-
-   xdk_d3d_video_t *d3d = (xdk_d3d_video_t*)driver.video_data;
-   d3d_get_poke_interface(d3d, &driver.video_poke);
-
-#if defined(_XBOX1)
-   font_x = 0;
-   font_y = 0;
-#elif defined(_XBOX360)
-   snprintf(g_settings.video.font_path, sizeof(g_settings.video.font_path), "game:\\media\\Arial_12.xpr");
-#endif
-   d3d->font_ctx = d3d_font_init_first(d3d, g_settings.video.font_path, 0 /* font size - fixed/unused */);
 }
 
 static void xdk_d3d_restart(void)
@@ -1177,7 +1071,6 @@ const video_driver_t video_xdk_d3d = {
 #endif
    xdk_d3d_free,
    "xdk_d3d",
-   xdk_d3d_start,
    xdk_d3d_restart,
    xdk_d3d_set_rotation,
    NULL, /* viewport_info */
